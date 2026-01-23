@@ -12,7 +12,7 @@ def register_prompts(mcp: FastMCP):
         return f"""Please follow these steps to process the contract document at '{file_path}':
 
 1. Use the 'process_contract' tool to extract data from the document.
-2. Present the extracted data to me for review, including the Contract Name, Parties, Dates, Cost, and Summary.
+2. Present the extracted data to me for review, including the Contract Name, Number, Duration, Renewal Type, SLA Info, Parties, Dates, Cost, and Summary.
 3. Ask me for confirmation to proceed with creation.
 4. If I confirm, use the 'create_glpi_contract' tool to create the contract in GLPI using the extracted data.
 5. Provide the returned Contract ID and any warnings.

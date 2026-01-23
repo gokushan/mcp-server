@@ -1,4 +1,8 @@
-"""OAuth 2.1 client implementation with PKCE support."""
+"""[Adapter] Secondary Adapter (Driven) for OAuth Authentication.
+
+This module implements the driven adapter that interacts with the external
+Identity Provider (GLPI OAuth Server) to manage authentication tokens.
+"""
 
 import base64
 import hashlib

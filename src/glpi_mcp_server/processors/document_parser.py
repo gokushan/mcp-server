@@ -27,6 +27,8 @@ class DocumentParser:
             return DocumentParser._extract_from_pdf(file_path)
         elif file_path.suffix.lower() in [".docx", ".doc"]:
             return DocumentParser._extract_from_docx(file_path)
+        elif file_path.suffix.lower() == ".txt":
+            return file_path.read_text(encoding="utf-8")
         else:
             raise ValueError(f"Unsupported file type: {file_path.suffix}")
 

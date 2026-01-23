@@ -1,4 +1,9 @@
-"""Base document processor."""
+"""[Port] Output Port (Interface) for Document Processing.
+
+This module defines the interface that any document processor must implement.
+It acts as a port that the application core uses to communicate with
+specific document processing implementations (adapters).
+"""
 
 from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar

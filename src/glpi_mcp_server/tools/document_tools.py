@@ -1,6 +1,11 @@
-"""Document processing tools."""
+"""[Adapter] Primary Adapter (Driving) for Document Processing.
+
+This module exposes the document processing functionality to the MCP protocol.
+It acts as a driving adapter, orchestrating the processing workflow.
+"""
 
 from pathlib import Path
+from typing import Any
 
 from ..glpi.models import ProcessedContract, ProcessedInvoice
 from ..processors.contract_processor import ContractProcessor

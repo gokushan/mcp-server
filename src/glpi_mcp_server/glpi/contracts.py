@@ -23,7 +23,7 @@ class ContractManager:
             Created contract details
         """
         # Convert Pydantic model to dict, filtering None values
-        payload = {k: v for k, v in data.model_dump().items() if v is not None}
+        payload = {k: v for k, v in data.model_dump(mode='json').items() if v is not None}
         
         response = await self.client.post(self.endpoint, payload)
         

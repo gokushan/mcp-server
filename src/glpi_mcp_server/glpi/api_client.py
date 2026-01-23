@@ -1,4 +1,8 @@
-"""Base GLPI API client with OAuth authentication."""
+"""[Adapter] Secondary Adapter (Driven) for GLPI API.
+
+This module implements the driven adapter that communicates with the external
+GLPI API, handling authentication (via OAuth) and HTTP requests.
+"""
 
 import logging
 from typing import Any
@@ -28,6 +32,7 @@ class GLPIAPIClient:
         self,
         api_url: str | None = None,
         app_token: str | None = None,
+        user_token: str | None = None,
         oauth_client: OAuthClient | None = None,
     ):
         """Initialize GLPI API client.
@@ -35,10 +40,12 @@ class GLPIAPIClient:
         Args:
             api_url: GLPI API base URL (defaults to settings)
             app_token: GLPI application token (defaults to settings)
+            user_token: GLPI user token for simple auth (defaults to settings)
             oauth_client: OAuth client instance (creates new if not provided)
         """
         self.api_url = (api_url or settings.glpi_api_url).rstrip("/")
         self.app_token = app_token or settings.glpi_app_token
+        self.user_token = user_token or settings.glpi_user_token
         self.oauth_client = oauth_client or OAuthClient()
         self.session_token: str | None = None
         self._client: httpx.AsyncClient | None = None
@@ -74,6 +81,7 @@ class GLPIAPIClient:
         headers = {
             "Content-Type": "application/json",
             "App-Token": self.app_token,
+            "Authorization": f"user_token {self.user_token}"
         }
 
         if include_session and self.session_token:
@@ -82,7 +90,9 @@ class GLPIAPIClient:
         return headers
 
     async def init_session(self) -> str:
-        """Initialize GLPI session with OAuth token.
+        """Initialize GLPI session.
+
+        Uses either User Token (if configured) or OAuth 2.1.
 
         Returns:
             Session token
@@ -90,13 +100,20 @@ class GLPIAPIClient:
         Raises:
             ValueError: If authentication fails
         """
-        # Get valid OAuth access token
-        access_token = await self.oauth_client.ensure_valid_token()
-
-        # Initialize GLPI session
         client = await self._get_client()
         headers = await self._get_headers(include_session=False)
-        headers["Authorization"] = f"Bearer {access_token}"
+
+        if self.user_token:
+            # Use User Token Auth
+            # Method provided by user: Authorization: user_token <token>
+            headers["Authorization"] = f"user_token {self.user_token}"
+            logger.debug("Using User Token authentication")
+        else:
+            # Use OAuth 2.1 Auth
+            # Get valid OAuth access token
+            logger.debug("Using OAuth authentication")
+            access_token = await self.oauth_client.ensure_valid_token()
+            headers["Authorization"] = f"Bearer {access_token}"
 
         response = await client.get(
             f"{self.api_url}/initSession",

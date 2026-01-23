@@ -1,4 +1,8 @@
-"""Ticket management tools."""
+"""[Adapter] Primary Adapter (Driving) for Ticket Management.
+
+This module exposes the ticket management functionality to the MCP protocol.
+It acts as a driving adapter that translates MCP tool calls into domain commands.
+"""
 
 from typing import Any
 

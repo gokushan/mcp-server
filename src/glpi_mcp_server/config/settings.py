@@ -18,12 +18,12 @@ class Settings(BaseSettings):
     )
 
     # OAuth 2.1 Configuration
-    oauth_client_id: str = Field(..., description="OAuth 2.1 Client ID")
-    oauth_client_secret: str = Field(..., description="OAuth 2.1 Client Secret")
-    oauth_authorization_url: str = Field(
-        ..., description="OAuth 2.1 Authorization endpoint"
+    oauth_client_id: str | None = Field(default=None, description="OAuth 2.1 Client ID")
+    oauth_client_secret: str | None = Field(default=None, description="OAuth 2.1 Client Secret")
+    oauth_authorization_url: str | None = Field(
+        default=None, description="OAuth 2.1 Authorization endpoint"
     )
-    oauth_token_url: str = Field(..., description="OAuth 2.1 Token endpoint")
+    oauth_token_url: str | None = Field(default=None, description="OAuth 2.1 Token endpoint")
     oauth_redirect_uri: str = Field(
         default="http://localhost:8080/callback",
         description="OAuth 2.1 Redirect URI",
@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     # GLPI API Configuration
     glpi_api_url: str = Field(..., description="GLPI API base URL")
     glpi_app_token: str = Field(..., description="GLPI Application Token")
+    glpi_user_token: str | None = Field(default=None, description="GLPI User Token (API Token)")
 
     # LLM Configuration
     llm_provider: Literal["openai", "anthropic", "ollama"] = Field(
@@ -50,6 +51,9 @@ class Settings(BaseSettings):
     )
     anthropic_model: str = Field(
         default="claude-3-sonnet-20240229", description="Anthropic model to use"
+    )
+    anthropic_base_url: str = Field(
+        default="https://api.anthropic.com/v1", description="Anthropic base URL"
     )
 
     # Ollama Configuration

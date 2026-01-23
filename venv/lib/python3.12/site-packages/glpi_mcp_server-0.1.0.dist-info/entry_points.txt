@@ -1,0 +1,2 @@
+[console_scripts]
+glpi-mcp-server = glpi_mcp_server.server:main
