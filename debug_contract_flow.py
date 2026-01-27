@@ -10,6 +10,14 @@ logger = logging.getLogger("debug_flow")
 
 # Asegurar que podemos importar nuestros módulos
 import sys
+from dotenv import load_dotenv
+
+# Cargar variables de entorno desde el archivo .env en el directorio /server
+# Esto es necesario si el script se ejecuta desde la raíz del proyecto
+dotenv_path = Path(__file__).parent / ".env"
+if dotenv_path.exists():
+    load_dotenv(dotenv_path)
+
 sys.path.append(str(Path(__file__).parent / "src"))
 
 from glpi_mcp_server.processors.contract_processor import ContractProcessor
@@ -46,32 +54,45 @@ async def run_debug_flow():
     print(f"\n[PASO 2] Creando contrato en GLPI")
     print("----------------------------------------")
     
-    # Confirmación manual simulada (opcional en debug real, aquí lo hacemos directo)
-    # Mapear los datos procesados a los datos que espera GLPI
-    # Nota: ContractProcessor devuelve ProcessedContract, ContractManager espera ContractData
-    # Hacemos un mapeo básico para el ejemplo
-    
-    # Match GLPI response with ProcessedContract - Domain model
-    contract_payload = ContractData(
-        name=processed_data.contract_name,
-        num=processed_data.contract_num,
-        accounting_number=processed_data.accounting_number,
-        begin_date=processed_data.start_date,
-        duration=processed_data.duration_months,
-        notice=processed_data.notice_months,
-        renewal=processed_data.renewal_enum,
-        billing=processed_data.billing_frequency_months,
-        cost=processed_data.amount,
-        comment=f"Importado automáticamente.\nResumen: {processed_data.summary}\nPartes: {processed_data.parties}\nSLA Info: {processed_data.sla_support_hours}",
-        states_id=1,  # Estado activo por defecto (ejemplo)
-        contracttypes_id=1 # Tipo Servicios por defecto (ejemplo)
-    )
-    
-    print("Datos a enviar a GLPI:")
-    print(contract_payload)
-
     # Iniciar cliente GLPI
     try:
+        # Match GLPI response with ProcessedContract - Domain model
+        sla_data = processed_data.sla_support_hours or {}
+        
+        # Helper to ensure HH:MM:SS format
+        def format_hour(val):
+            if val is None: return None
+            if isinstance(val, int): return f"{val:02d}:00:00"
+            return str(val)
+
+        contract_payload = ContractData(
+            name=processed_data.contract_name,
+            num=processed_data.contract_num,
+            accounting_number=processed_data.accounting_number,
+            begin_date=processed_data.start_date,
+            end_date=processed_data.end_date,
+            duration=processed_data.duration_months,
+            notice=processed_data.notice_months,
+            renewal=processed_data.renewal_enum,
+            billing=processed_data.billing_frequency_months,
+            cost=processed_data.amount,
+            comment=f"Importado automáticamente.\nResumen: {processed_data.summary}\nPartes: {processed_data.parties}\nSLA Info: {processed_data.sla_support_hours}",
+            states_id=1,  # Estado activo por defecto (ejemplo)
+            contracttypes_id=1, # Tipo Servicios por defecto (ejemplo)
+            # SLA Mapping
+            week_begin_hour=format_hour(sla_data.get("week_begin_hour")),
+            week_end_hour=format_hour(sla_data.get("week_end_hour")),
+            use_saturday=1 if sla_data.get("use_saturday") else 0,
+            saturday_begin_hour=format_hour(sla_data.get("saturday_begin_hour")),
+            saturday_end_hour=format_hour(sla_data.get("saturday_end_hour")),
+            use_sunday=1 if sla_data.get("use_sunday") else 0,
+            sunday_begin_hour=format_hour(sla_data.get("sunday_begin_hour")),
+            sunday_end_hour=format_hour(sla_data.get("sunday_end_hour")),
+        )
+        
+        print("Datos a enviar a GLPI:")
+        print(contract_payload)
+
         # get_glpi_client usa las variables de entorno para autenticarse
         async with await get_glpi_client() as client:
             # Adapter output to secondary adapter - Create contract in GLPI
@@ -85,7 +106,9 @@ async def run_debug_flow():
             print(json.dumps(result.model_dump(mode='json'), indent=2, ensure_ascii=False))
             
     except Exception as e:
-        print(f"\n❌ Error conectando o creando en GLPI: {e}")
+        import traceback
+        print(f"\n❌ Error conectando o creando en GLPI: {type(e).__name__}: {e}")
+        traceback.print_exc()
 
 if __name__ == "__main__":
     asyncio.run(run_debug_flow())

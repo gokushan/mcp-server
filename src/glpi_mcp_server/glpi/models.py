@@ -41,13 +41,13 @@ class ContractData(BaseModel):
     week_begin_hour: str | None = Field(None, description="Inicio semana (HH:MM:SS)")
     week_end_hour: str | None = Field(None, description="Fin semana (HH:MM:SS)")
 
-    use_monday: int = Field(0, description="Usar lunes (0|1)")
-    monday_begin_hour: str | None = Field(None, description="Inicio lunes (HH:MM:SS)")
-    monday_end_hour: str | None = Field(None, description="Fin lunes (HH:MM:SS)")
-
     use_saturday: int = Field(0, description="Usar sábado (0|1)")
     saturday_begin_hour: str | None = Field(None, description="Inicio sábado (HH:MM:SS)")
     saturday_end_hour: str | None = Field(None, description="Fin sábado (HH:MM:SS)")
+
+    use_sunday: int = Field(0, description="Usar domingo (0|1)")
+    sunday_begin_hour: str | None = Field(None, description="Inicio domingo (HH:MM:SS)")
+    sunday_end_hour: str | None = Field(None, description="Fin domingo (HH:MM:SS)")
 
     # === LÍMITES ===
     max_links_allowed: int | None = Field(None, description="Máx. elementos vinculables")

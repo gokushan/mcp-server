@@ -21,24 +21,24 @@ class ContractProcessor(BaseProcessor[ProcessedContract]):
         return """You are an expert legal AI assistant. Your task is to extract structured data from the provided contract text.
         
 Extract the following information:
-- Contract name
+- Contract name (contract_name)
 - Contract number/reference (contract_num)
 - Accounting number/reference (accounting_number)
-- Parties involved (Client and Provider)
-- Start and End dates (YYYY-MM-DD format)
-- Duration in months (duration_months) - Calculate if not explicitly stated but start/end dates are present.
-- Notice period in months (notice_months) needed for termination/non-renewal.
-- Renewal type (renewal_type): "automatic", "manual", "none".
+- Parties involved (parties): A dictionary with "client" and "provider" keys, each containing "name", "id", and "address".
+- Start date (start_date) and End date (end_date) in YYYY-MM-DD format.
+- Duration in months (duration_months): Calculate if only dates are provided.
+- Notice period in months (notice_months) for termination.
+- Renewal type (renewal_type): "automatic", "manual", or "none".
 - Renewal Enum (renewal_enum): 1 for Automatic/Tacit, 2 for Express/Manual/None.
-- Billing/Payment frequency in months (billing_frequency_months). E.g., Monthly=1, Quarterly=3, Yearly=12.
-- Contract amount/cost
-- Currency
-- Payment terms
-- SLA/Support Hours (sla_support_hours): Extract as a dictionary if mentioned (e.g., {"week_days": "Mon-Fri", "hours": "9-17", "response_time": "..."}).
-- Key terms (list of important clauses)
-- Brief summary of the contract
+- Billing frequency in months (billing_frequency_months).
+- Total contract amount (amount): A float number.
+- Currency (currency): E.g., "EUR".
+- Payment terms (payment_terms)
+- SLA/Support Hours (sla_support_hours): A dictionary with keys: week_begin_hour, week_end_hour, use_saturday, saturday_begin_hour, saturday_end_hour, use_sunday, sunday_begin_hour, sunday_end_hour.
+- Key terms (key_terms): List of important clauses.
+- Summary (summary): A concise overview.
 
-Return the output as a valid JSON object matching the requested schema. Do not include any explanation, only the JSON."""
+Return valid JSON matching the schema. Numeric fields should be numbers, not strings. Do not include markdown tags. """
 
     async def _parse_with_llm(self, text: str) -> ProcessedContract:
         import httpx

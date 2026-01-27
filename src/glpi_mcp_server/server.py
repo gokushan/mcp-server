@@ -60,29 +60,98 @@ async def process_invoice(file_path: str) -> dict:
 @mcp.tool()
 async def create_glpi_contract(
     name: str,
-    begin_date: str,
+    # Identification
     num: str | None = None,
-    end_date: str | None = None,
-    renewal_type: int = 0,
-    cost: float | None = None,
-    comment: str | None = None,
-    suppliers_id: int | None = None,
+    entities_id: int | None = None,
+    is_recursive: int = 0,
+    # Classification
     contracttypes_id: int | None = None,
     states_id: int | None = None,
+    # Financial
+    cost: float | None = None,
+    accounting_number: str | None = None,
+    # Dates & Duration
+    begin_date: str | None = None,
+    duration: int | None = None,
+    notice: int | None = None,
+    periodicity: int | None = None,
+    billing: int | None = None,
+    renewal: int | None = None,
+    # Alerts
+    alert: int | None = None,
+    # SLA
+    week_begin_hour: str | None = None,
+    week_end_hour: str | None = None,
+    use_saturday: int = 0,
+    saturday_begin_hour: str | None = None,
+    saturday_end_hour: str | None = None,
+    use_sunday: int = 0,
+    sunday_begin_hour: str | None = None,
+    sunday_end_hour: str | None = None,
+    # Limits
+    max_links_allowed: int | None = None,
+    # Location
+    locations_id: int | None = None,
+    # Obs
+    comment: str | None = None,
+    # Templates
+    is_template: int = 0,
+    template_name: str | None = None,
+    # State
+    is_deleted: int = 0,
+    # Legacy/Compatibility
+    suppliers_id: int | None = None,
+    end_date: str | None = None,
 ) -> dict:
     """Create a new contract in GLPI.
 
     Args:
-        name: Contract name
-        begin_date: Start date (YYYY-MM-DD)
-        num: Contract number/reference
-        end_date: End date (YYYY-MM-DD)
-        renewal_type: Renewal type (0=none, 1=auto, 2=manual)
-        cost: Contract cost
-        comment: Additional comments
-        suppliers_id: Supplier ID
+        name: Contract name (Required)
+        num: Contract number
+        entities_id: Entity ID
+        is_recursive: Recursive (0|1)
         contracttypes_id: Contract type ID
         states_id: Contract state ID
+        cost: Contract cost
+        accounting_number: Accounting number
+        begin_date: Start date (YYYY-MM-DD)
+        duration: Duration in months
+        notice: Notice in months
+        periodicity: Periodicity in months
+        billing: Billing in months
+        renewal: Renewal (1=Tacit, 2=Express)
+        alert: Alert in months
+        week_begin_hour: Week start hour (HH:MM:SS)
+        week_end_hour: Week end hour (HH:MM:SS)
+        use_monday: Use Monday (0|1)
+        monday_begin_hour: Monday start hour (HH:MM:SS)
+        monday_end_hour: Monday end hour (HH:MM:SS)
+        use_tuesday: Use Tuesday (0|1)
+        tuesday_begin_hour: Tuesday start hour (HH:MM:SS)
+        tuesday_end_hour: Tuesday end hour (HH:MM:SS)
+        use_wednesday: Use Wednesday (0|1)
+        wednesday_begin_hour: Wednesday start hour (HH:MM:SS)
+        wednesday_end_hour: Wednesday end hour (HH:MM:SS)
+        use_thursday: Use Thursday (0|1)
+        thursday_begin_hour: Thursday start hour (HH:MM:SS)
+        thursday_end_hour: Thursday end hour (HH:MM:SS)
+        use_friday: Use Friday (0|1)
+        friday_begin_hour: Friday start hour (HH:MM:SS)
+        friday_end_hour: Friday end hour (HH:MM:SS)
+        use_saturday: Use Saturday (0|1)
+        saturday_begin_hour: Saturday start hour (HH:MM:SS)
+        saturday_end_hour: Saturday end hour (HH:MM:SS)
+        use_sunday: Use Sunday (0|1)
+        sunday_begin_hour: Sunday start hour (HH:MM:SS)
+        sunday_end_hour: Sunday end hour (HH:MM:SS)
+        max_links_allowed: Max links
+        locations_id: Location ID
+        comment: Comments
+        is_template: Is template (0|1)
+        template_name: Template name
+        is_deleted: Is deleted (0|1)
+        suppliers_id: Supplier ID
+        end_date: End date (YYYY-MM-DD)
 
     Returns:
         Created contract details
@@ -92,15 +161,36 @@ async def create_glpi_contract(
     
     data = ContractData(
         name=name,
-        begin_date=begin_date,
         num=num,
-        end_date=end_date,
-        renewal_type=renewal_type,
-        cost=cost,
-        comment=comment,
-        suppliers_id=suppliers_id,
+        entities_id=entities_id,
+        is_recursive=is_recursive,
         contracttypes_id=contracttypes_id,
-        states_id=states_id
+        states_id=states_id,
+        cost=cost,
+        accounting_number=accounting_number,
+        begin_date=begin_date,
+        duration=duration,
+        notice=notice,
+        periodicity=periodicity,
+        billing=billing,
+        renewal=renewal,
+        alert=alert,
+        week_begin_hour=week_begin_hour,
+        week_end_hour=week_end_hour,
+        use_saturday=use_saturday,
+        saturday_begin_hour=saturday_begin_hour,
+        saturday_end_hour=saturday_end_hour,
+        use_sunday=use_sunday,
+        sunday_begin_hour=sunday_begin_hour,
+        sunday_end_hour=sunday_end_hour,
+        max_links_allowed=max_links_allowed,
+        locations_id=locations_id,
+        comment=comment,
+        is_template=is_template,
+        template_name=template_name,
+        is_deleted=is_deleted,
+        suppliers_id=suppliers_id,
+        end_date=end_date
     )
     
     result = await manager.create(data)

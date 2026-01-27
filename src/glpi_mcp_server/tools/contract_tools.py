@@ -35,12 +35,12 @@ async def create_glpi_contract(
     # SLA
     week_begin_hour: str | None = None,
     week_end_hour: str | None = None,
-    use_monday: int = 0,
-    monday_begin_hour: str | None = None,
-    monday_end_hour: str | None = None,
     use_saturday: int = 0,
     saturday_begin_hour: str | None = None,
     saturday_end_hour: str | None = None,
+    use_sunday: int = 0,
+    sunday_begin_hour: str | None = None,
+    sunday_end_hour: str | None = None,
     # Limits
     max_links_allowed: int | None = None,
     # Location
@@ -76,9 +76,9 @@ async def create_glpi_contract(
         alert: Alert in months
         week_begin_hour: Week start hour (HH:MM:SS)
         week_end_hour: Week end hour (HH:MM:SS)
-        use_monday: Use Monday (0|1)
-        monday_begin_hour: Monday start hour (HH:MM:SS)
-        monday_end_hour: Monday end hour (HH:MM:SS)
+        use_sunday: Use Sunday (0|1)
+        sunday_begin_hour: Sunday start hour (HH:MM:SS)
+        sunday_end_hour: Sunday end hour (HH:MM:SS)
         use_saturday: Use Saturday (0|1)
         saturday_begin_hour: Saturday start hour (HH:MM:SS)
         saturday_end_hour: Saturday end hour (HH:MM:SS)
@@ -116,12 +116,12 @@ async def create_glpi_contract(
         alert=alert,
         week_begin_hour=week_begin_hour,
         week_end_hour=week_end_hour,
-        use_monday=use_monday,
-        monday_begin_hour=monday_begin_hour,
-        monday_end_hour=monday_end_hour,
         use_saturday=use_saturday,
         saturday_begin_hour=saturday_begin_hour,
         saturday_end_hour=saturday_end_hour,
+        use_sunday=use_sunday,
+        sunday_begin_hour=sunday_begin_hour,
+        sunday_end_hour=sunday_end_hour,
         max_links_allowed=max_links_allowed,
         locations_id=locations_id,
         comment=comment,
