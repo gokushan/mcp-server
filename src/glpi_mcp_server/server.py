@@ -9,6 +9,7 @@ from fastmcp import FastMCP
 
 from .config import settings
 from .glpi.contracts import ContractManager
+from .glpi.documents import DocumentManager
 from .glpi.invoices import InvoiceManager
 from .glpi.models import ContractData, InvoiceData, TicketData
 from .glpi.tickets import TicketManager
@@ -102,6 +103,8 @@ async def create_glpi_contract(
     # Legacy/Compatibility
     suppliers_id: int | None = None,
     end_date: str | None = None,
+    # Document attachment
+    file_path: str | None = None,
 ) -> dict:
     """Create a new contract in GLPI.
 
@@ -123,21 +126,6 @@ async def create_glpi_contract(
         alert: Alert in months
         week_begin_hour: Week start hour (HH:MM:SS)
         week_end_hour: Week end hour (HH:MM:SS)
-        use_monday: Use Monday (0|1)
-        monday_begin_hour: Monday start hour (HH:MM:SS)
-        monday_end_hour: Monday end hour (HH:MM:SS)
-        use_tuesday: Use Tuesday (0|1)
-        tuesday_begin_hour: Tuesday start hour (HH:MM:SS)
-        tuesday_end_hour: Tuesday end hour (HH:MM:SS)
-        use_wednesday: Use Wednesday (0|1)
-        wednesday_begin_hour: Wednesday start hour (HH:MM:SS)
-        wednesday_end_hour: Wednesday end hour (HH:MM:SS)
-        use_thursday: Use Thursday (0|1)
-        thursday_begin_hour: Thursday start hour (HH:MM:SS)
-        thursday_end_hour: Thursday end hour (HH:MM:SS)
-        use_friday: Use Friday (0|1)
-        friday_begin_hour: Friday start hour (HH:MM:SS)
-        friday_end_hour: Friday end hour (HH:MM:SS)
         use_saturday: Use Saturday (0|1)
         saturday_begin_hour: Saturday start hour (HH:MM:SS)
         saturday_end_hour: Saturday end hour (HH:MM:SS)
@@ -152,9 +140,10 @@ async def create_glpi_contract(
         is_deleted: Is deleted (0|1)
         suppliers_id: Supplier ID
         end_date: End date (YYYY-MM-DD)
+        file_path: Optional path to contract document to attach
 
     Returns:
-        Created contract details
+        Created contract details with document attachment status
     """
     client = await get_glpi_client()
     manager = ContractManager(client)
@@ -194,7 +183,32 @@ async def create_glpi_contract(
     )
     
     result = await manager.create(data)
-    return result.model_dump()
+    response = result.model_dump()
+    
+    # Attach document if file_path provided
+    if file_path:
+        doc_manager = DocumentManager(client)
+        try:
+            doc_result = await doc_manager.attach_to_item(
+                file_path=file_path,
+                item_id=result.id,
+                item_type="Contract",
+                document_name=name,
+            )
+            response["document_attached"] = True
+            response["document_id"] = doc_result.id
+            response["document_name"] = doc_result.name
+        except Exception as e:
+            # Contract created successfully, but document attachment failed
+            response["document_attached"] = False
+            response["document_error"] = str(e)
+            response["warning"] = (
+                f"Contract created successfully (ID: {result.id}), "
+                f"but document attachment failed: {str(e)}. "
+                "You can retry using the 'attach_document_to_contract' tool."
+            )
+    
+    return response
 
 
 @mcp.tool()
@@ -251,6 +265,58 @@ async def get_contract_status(id: int) -> dict:
     
     result = await manager.get(id)
     return result.model_dump()
+
+
+@mcp.tool()
+async def attach_document_to_contract(
+    contract_id: int,
+    file_path: str,
+    document_name: str | None = None,
+) -> dict:
+    """Attach a document to an existing contract in GLPI.
+    
+    This tool is useful when:
+    - Document attachment failed during contract creation
+    - You want to add additional documents to a contract
+    - You need to update/replace contract documentation
+    
+    Args:
+        contract_id: ID of the contract to attach document to
+        file_path: Absolute path to the document file
+        document_name: Optional name for the document (defaults to contract name)
+    
+    Returns:
+        Document attachment details
+        
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        ValueError: If contract doesn't exist or file is invalid
+    """
+    client = await get_glpi_client()
+    
+    # Get contract name if document_name not provided
+    if not document_name:
+        contract_manager = ContractManager(client)
+        contract = await contract_manager.get(contract_id)
+        document_name = contract.name
+    
+    # Attach document
+    doc_manager = DocumentManager(client)
+    result = await doc_manager.attach_to_item(
+        file_path=file_path,
+        item_id=contract_id,
+        item_type="Contract",
+        document_name=document_name,
+    )
+    
+    return {
+        "success": True,
+        "contract_id": contract_id,
+        "document_id": result.id,
+        "document_name": result.name,
+        "filename": result.filename,
+        "message": f"Document '{result.name}' attached successfully to Contract ID {contract_id}",
+    }
 
 
 # --- Invoice Management Tools ---

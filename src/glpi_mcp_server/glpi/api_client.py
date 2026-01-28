@@ -69,20 +69,31 @@ class GLPIAPIClient:
             self._client = httpx.AsyncClient(timeout=30.0)
         return self._client
 
-    async def _get_headers(self, include_session: bool = True) -> dict[str, str]:
+    async def _get_headers(
+        self, 
+        include_session: bool = True,
+        include_authorization: bool = False,
+        include_content_type: bool = True,
+    ) -> dict[str, str]:
         """Get request headers with authentication.
 
         Args:
             include_session: Whether to include session token
+            include_authorization: Whether to include Authorization header (only for init_session)
+            include_content_type: Whether to include Content-Type header (False for multipart uploads)
 
         Returns:
             Headers dictionary
         """
         headers = {
-            "Content-Type": "application/json",
             "App-Token": self.app_token,
-            "Authorization": f"user_token {self.user_token}"
         }
+
+        if include_content_type:
+            headers["Content-Type"] = "application/json"
+
+        if include_authorization and self.user_token:
+            headers["Authorization"] = f"user_token {self.user_token}"
 
         if include_session and self.session_token:
             headers["Session-Token"] = self.session_token
@@ -101,18 +112,19 @@ class GLPIAPIClient:
             ValueError: If authentication fails
         """
         client = await self._get_client()
-        headers = await self._get_headers(include_session=False)
-
+        
         if self.user_token:
             # Use User Token Auth
-            # Method provided by user: Authorization: user_token <token>
-            headers["Authorization"] = f"user_token {self.user_token}"
             logger.debug("Using User Token authentication")
+            headers = await self._get_headers(
+                include_session=False,
+                include_authorization=True
+            )
         else:
             # Use OAuth 2.1 Auth
-            # Get valid OAuth access token
             logger.debug("Using OAuth authentication")
             access_token = await self.oauth_client.ensure_valid_token()
+            headers = await self._get_headers(include_session=False)
             headers["Authorization"] = f"Bearer {access_token}"
 
         response = await client.get(
@@ -274,3 +286,70 @@ class GLPIAPIClient:
         params = {"criteria": criteria} if criteria else {}
         result = await self.get(f"search/{itemtype}", params=params)
         return result.get("data", [])
+
+    async def upload_file(
+        self,
+        endpoint: str,
+        file_path: str,
+        manifest: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Upload a file to GLPI using multipart/form-data.
+
+        Args:
+            endpoint: API endpoint (e.g., "Document/")
+            file_path: Absolute path to the file to upload
+            manifest: Upload manifest containing metadata (name, items_id, itemtype, etc.)
+
+        Returns:
+            Response data from GLPI
+
+        Raises:
+            FileNotFoundError: If file doesn't exist
+            httpx.HTTPError: If request fails
+        """
+        import json
+        from pathlib import Path
+
+        if not self.session_token:
+            await self.init_session()
+
+        # Validate file exists
+        file_obj = Path(file_path)
+        if not file_obj.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+        if not file_obj.is_file():
+            raise ValueError(f"Path is not a file: {file_path}")
+
+        client = await self._get_client()
+        
+        # Get headers without Content-Type (httpx will set it automatically for multipart)
+        headers = await self._get_headers(
+            include_session=True,
+            include_authorization=False,  # Not needed after init_session
+            include_content_type=False,   # httpx handles this for multipart
+        )
+
+        url = f"{self.api_url}/{endpoint.lstrip('/')}"
+
+        # Prepare multipart form data
+        files = {
+            "filename[]": (file_obj.name, open(file_path, "rb"), "application/octet-stream")
+        }
+        
+        data = {
+            "uploadManifest": json.dumps(manifest)
+        }
+
+        response = await client.post(
+            url,
+            headers=headers,
+            files=files,
+            data=data
+        )
+
+        # Close file handle
+        files["filename[]"][1].close()
+
+        response.raise_for_status()
+        return response.json()
+

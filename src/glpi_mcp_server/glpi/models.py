@@ -185,6 +185,30 @@ class ProcessedInvoice(BaseModel):
     bank_account: str | None = None
 
 
+class DocumentData(BaseModel):
+    """Document data model for GLPI."""
+
+    name: str = Field(..., description="Document name")
+    filename: str = Field(..., description="Original filename")
+    filepath: str = Field(..., description="Absolute path to file")
+    items_id: int = Field(..., description="ID of the linked item (e.g., contract ID)")
+    itemtype: str = Field(..., description="Type of linked item (e.g., 'Contract')")
+    comment: str | None = Field(None, description="Optional comment")
+
+
+class DocumentResponse(BaseModel):
+    """Document response from GLPI API."""
+
+    id: int = Field(..., description="Document ID")
+    name: str
+    filename: str | None = None
+    upload_file: str | None = None
+    date_creation: datetime | None = None
+    date_mod: datetime | None = None
+    items_id: int | None = None
+    itemtype: str | None = None
+
+
 class APIResponse(BaseModel):
     """Generic API response."""
 
