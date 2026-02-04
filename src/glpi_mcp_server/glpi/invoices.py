@@ -73,21 +73,29 @@ class InvoiceManager:
     async def list_invoices(
         self, 
         criteria: dict[str, Any] | None = None,
-        limit: int = 50
+        limit: int = 50,
+        offset: int = 0
     ) -> list[InvoiceResponse]:
         """List invoices.
         
         Args:
             criteria: Search criteria
             limit: Max results
+            offset: Pagination offset
             
         Returns:
             List of invoices
         """
-        raw_list = await self.client.search(self.endpoint, criteria)
+        params = criteria or {}
+        params["range"] = f"{offset}-{offset + limit - 1}"
         
+        raw_list = await self.client.get(self.endpoint, params=params)
+        
+        if not isinstance(raw_list, list):
+            raw_list = [raw_list] if raw_list else []
+            
         invoices = []
-        for item in raw_list[:limit]:
+        for item in raw_list:
             invoices.append(InvoiceResponse(
                 id=item.get("id"),
                 name=item.get("name"),

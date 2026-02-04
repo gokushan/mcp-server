@@ -6,9 +6,9 @@ It acts as a driving adapter that translates MCP tool calls into domain commands
 
 from typing import Any
 
-from ..glpi.models import TicketData
-from ..glpi.tickets import TicketManager
-from .utils import get_glpi_client
+from glpi_mcp_server.glpi.models import TicketData
+from glpi_mcp_server.glpi.tickets import TicketManager
+from glpi_mcp_server.tools.utils import get_glpi_client
 
 
 async def create_ticket(
@@ -76,16 +76,9 @@ async def update_ticket(
     client = await get_glpi_client()
     manager = TicketManager(client)
     
-    # Logic for update vs followup vs solution
-    # Simplified here to just update fields
-    # In real implementation, would use different endpoints for followup/solution
-    
     update_data = {}
     if status is not None: update_data["status"] = status
     if priority is not None: update_data["priority"] = priority
-    
-    # TODO: Implement add_followup and add_solution methods in TicketManager
-    # and call them if content/solution provided
     
     result = await manager.update(id, update_data)
     return result.model_dump()

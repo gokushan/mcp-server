@@ -50,7 +50,7 @@ Return the output as a valid JSON object matching the requested schema. Do not i
                     },
                     json={
                         "model": settings.anthropic_model,
-                        "max_tokens": 4096,
+                        "max_tokens": 1024,
                         "system": self._get_system_prompt(),
                         "messages": [
                             {"role": "user", "content": f"Extract data from this invoice:\n\n{text[:20000]}"}

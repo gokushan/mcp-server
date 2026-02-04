@@ -78,7 +78,7 @@ class ContractResponse(BaseModel):
     num: str | None = None
     begin_date: str | None = None
     end_date: str | None = None
-    cost: float | None = None
+    comment: str | None = None
     state: int | str | None = None
     supplier: str | None = None
     last_update: datetime | None = None

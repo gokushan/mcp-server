@@ -71,28 +71,36 @@ class TicketManager:
     async def list_tickets(
         self, 
         criteria: dict[str, Any] | None = None,
-        limit: int = 50
+        limit: int = 50,
+        offset: int = 0
     ) -> list[TicketResponse]:
         """List tickets.
         
         Args:
             criteria: Search criteria
             limit: Max results
+            offset: Pagination offset
             
         Returns:
             List of tickets
         """
-        raw_list = await self.client.search(self.endpoint, criteria)
+        params = criteria or {}
+        params["range"] = f"{offset}-{offset + limit - 1}"
         
+        raw_list = await self.client.get(self.endpoint, params=params)
+        
+        if not isinstance(raw_list, list):
+            raw_list = [raw_list] if raw_list else []
+            
         tickets = []
-        for item in raw_list[:limit]:
+        for item in raw_list:
             # Basic info available in search results
             tickets.append(TicketResponse(
                 id=item.get("id"),
                 name=item.get("name"),
                 status=str(item.get("status", 1)),
                 priority=int(item.get("priority", 3)),
-                created=datetime.now() # Date field might differ in search results
+                created=datetime.now() # Date field might differ in list results
             ))
             
         return tickets

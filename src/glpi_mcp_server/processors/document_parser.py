@@ -5,6 +5,8 @@ from pathlib import Path
 import pdfplumber
 from docx import Document
 
+from ..config import settings
+
 
 class DocumentParser:
     """Parser for extracting text from documents."""
@@ -22,6 +24,11 @@ class DocumentParser:
         file_path = Path(file_path)
         if not file_path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
+            
+        # Validate extension against allowed list
+        ext = file_path.suffix.lower().lstrip(".")
+        if ext not in settings.allowed_extensions_list:
+            raise ValueError(f"File extension '{ext}' is not allowed. Allowed: {settings.allowed_extensions_list}")
             
         if file_path.suffix.lower() == ".pdf":
             return DocumentParser._extract_from_pdf(file_path)

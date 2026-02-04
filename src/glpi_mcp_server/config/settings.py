@@ -71,6 +71,55 @@ class Settings(BaseSettings):
         description="Path to store OAuth tokens",
     )
 
+    # Security Configuration
+    glpi_allowed_roots: str = Field(
+        default="", 
+        description="Comma-separated list of allowed root directories for file access"
+    )
+
+    @property
+    def allowed_roots_list(self) -> list[Path]:
+        """Parse allowed roots into a list of Path objects.
+        
+        Raises:
+            ValueError: If any root path is relative or contains '..'
+        """
+        if not self.glpi_allowed_roots:
+            return []
+        
+        paths = []
+        for path_str in self.glpi_allowed_roots.split(","):
+            clean_path = path_str.strip()
+            if not clean_path:
+                continue
+                
+            if ".." in clean_path:
+                raise ValueError(f"Security error: Allowed root path '{clean_path}' cannot contain '..'")
+            
+            p = Path(clean_path)
+            if not p.is_absolute():
+                raise ValueError(f"Security error: Allowed root path '{clean_path}' must be an absolute path")
+                
+            paths.append(p.resolve())
+        return paths
+
+    glpi_allowed_extensions: str = Field(
+        default="pdf,txt,doc,docx",
+        description="Comma-separated list of allowed file extensions"
+    )
+
+    @property
+    def allowed_extensions_list(self) -> list[str]:
+        """Parse allowed extensions into a list of strings."""
+        if not self.glpi_allowed_extensions:
+            return ["pdf", "txt", "doc", "docx"]
+        
+        return [
+            ext.strip().lower().lstrip(".") 
+            for ext in self.glpi_allowed_extensions.split(",") 
+            if ext.strip()
+        ]
+
     def validate_llm_config(self) -> None:
         """Validate LLM configuration based on provider."""
         if self.llm_provider == "openai" and not self.openai_api_key:

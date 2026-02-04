@@ -6,9 +6,9 @@ It acts as a driving adapter that translates MCP tool calls into domain commands
 
 from typing import Any
 
-from ..glpi.invoices import InvoiceManager
-from ..glpi.models import InvoiceData
-from .utils import get_glpi_client
+from glpi_mcp_server.glpi.invoices import InvoiceManager
+from glpi_mcp_server.glpi.models import InvoiceData
+from glpi_mcp_server.tools.utils import get_glpi_client
 
 
 async def create_glpi_invoice(
