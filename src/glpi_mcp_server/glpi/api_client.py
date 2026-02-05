@@ -247,11 +247,12 @@ class GLPIAPIClient:
         response.raise_for_status()
         return response.json()
 
-    async def delete(self, endpoint: str) -> bool:
+    async def delete(self, endpoint: str, params: dict[str, Any] | None = None) -> bool:
         """Perform DELETE request to GLPI API.
 
         Args:
             endpoint: API endpoint
+            params: Optional query parameters (e.g., force_purge)
 
         Returns:
             True if successful
@@ -266,7 +267,7 @@ class GLPIAPIClient:
         headers = await self._get_headers()
 
         url = f"{self.api_url}/{endpoint.lstrip('/')}"
-        response = await client.delete(url, headers=headers)
+        response = await client.delete(url, headers=headers, params=params)
 
         response.raise_for_status()
         return True

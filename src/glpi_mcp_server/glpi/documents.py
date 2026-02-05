@@ -140,3 +140,38 @@ class DocumentManager:
             True if successful
         """
         return await self.client.delete(f"{self.endpoint}/{document_id}")
+
+    async def list_for_item(self, item_id: int, itemtype: str) -> list[DocumentResponse]:
+        """List documents associated with a specific GLPI item.
+
+        Args:
+            item_id: ID of the item
+            itemtype: Type of item (e.g., "Contract")
+
+        Returns:
+            List of documents
+        """
+        # In GLPI, listing documents for an item is done via the itemtype/:id/Document_Item endpoint
+        endpoint = f"{itemtype}/{item_id}/Document_Item"
+        try:
+            raw_list = await self.client.get(endpoint)
+        except Exception as e:
+            logger.error(f"Failed to list documents for {itemtype} {item_id}: {str(e)}")
+            return []
+        
+        if not isinstance(raw_list, list):
+            raw_list = [raw_list] if raw_list else []
+            
+        documents = []
+        for link in raw_list:
+            doc_id = link.get("documents_id")
+            if doc_id:
+                try:
+                    # Get the actual document details
+                    doc_data = await self.get(doc_id)
+                    documents.append(doc_data)
+                except Exception:
+                    # If we can't get one document, we still try others
+                    continue
+            
+        return documents

@@ -14,13 +14,20 @@ uv run fastmcp dev src/glpi_mcp_server/server.py
 *   **Ideal para:** Probar visualmente, ver logs en tiempo real y explorar la API.
 *   **Interfaz:** Generalmente en `http://localhost:5173`.
 
-### Modo SSE (Servidor de Red)
-Arranca el servidor como un servicio web capaz de manejar múltiples conexiones simultáneas y persistentes.
+### Modo SSE (Server-Sent Events)
+Arranca el servidor usando el transporte SSE. Útil para compatibilidad con clientes más antiguos.
 ```bash
 uv run fastmcp run -t sse --port 8000 src/glpi_mcp_server/server.py
 ```
-*   **Ideal para:** Simular despliegues remotos, conectar múltiples clientes o depurar notificaciones.
-*   **Transporte:** Utiliza Server-Sent Events (SSE) para comunicación bidireccional.
+*   **Transporte:** Utiliza Server-Sent Events (SSE). La URL por defecto es `http://localhost:8000/sse`.
+
+### Modo HTTP (Streamable HTTP) - RECOMENDADO
+Es el modo más moderno y eficiente, recomendado para nuevas implementaciones.
+```bash
+uv run fastmcp run -t http --port 8000 src/glpi_mcp_server/server.py
+```
+*   **Ideal para:** Máximo rendimiento y cumplimiento con los últimos estándares de MCP.
+*   **Transporte:** Utiliza Streamable HTTP. La URL por defecto es `http://localhost:8000/mcp`.
 
 ---
 
@@ -29,15 +36,20 @@ uv run fastmcp run -t sse --port 8000 src/glpi_mcp_server/server.py
 Si tienes el servidor corriendo en modo SSE (o cualquier modo que no sea el `dev` integrado), puedes lanzar el Inspector de forma independiente para conectarte a él.
 
 ### Lanzar Inspector apuntando al servidor
-Abre una terminal nueva y ejecuta:
+Si usas **HTTP (Recomendado)**:
+```bash
+npx -y @modelcontextprotocol/inspector@latest http://localhost:8000/mcp
+```
+
+Si usas **SSE**:
 ```bash
 npx -y @modelcontextprotocol/inspector@latest http://localhost:8000/sse
 ```
 
 ### Configuración de Conexión en la Interfaz
 Una vez abierto el Inspector en el navegador:
-*   **Transport Type:** Selecciona `SSE`.
-*   **URL:** `http://localhost:8000/sse`.
+*   **Transport Type:** Selecciona `HTTP` o `SSE` según corresponda.
+*   **URL:** `http://localhost:8000/mcp` (para HTTP) o `http://localhost:8000/sse` (para SSE).
 *   **Connection Type:** Se recomienda **Via Proxy** para evitar problemas de CORS en desarrollo local.
 
 ### Modo Normal (Standard I/O)

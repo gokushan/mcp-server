@@ -47,7 +47,7 @@ Una vez copiados los archivos al nuevo equipo, sigue estos pasos:
 
 ## Gestión en Producción
 
-Para un entorno de producción estable y accesible remotamente, se recomienda usar el transporte **SSE (Server-Sent Events)** y un gestor de procesos como **systemd**.
+Para un entorno de producción estable y accesible remotamente, se recomienda usar el transporte **Streamable HTTP** y un gestor de procesos como **systemd**.
 
 ### 1. Configuración de systemd (Daemonización)
 
@@ -57,7 +57,7 @@ Crea un archivo de servicio para que el servidor se inicie automáticamente y se
 
 ```ini
 [Unit]
-Description=GLPI MCP Server (SSE)
+Description=GLPI MCP Server (HTTP)
 After=network.target
 
 [Service]
@@ -66,7 +66,7 @@ User=tu_usuario
 WorkingDirectory=/home/tu_usuario/proyectos-mcp/glpi-mcp/server
 # Carga las variables de entorno desde el archivo .env
 EnvironmentFile=/home/tu_usuario/proyectos-mcp/glpi-mcp/server/.env
-ExecStart=/home/tu_usuario/.local/bin/uv run fastmcp run src/glpi_mcp_server/server.py --transport sse --port 8000
+ExecStart=/home/tu_usuario/.local/bin/uv run fastmcp run src/glpi_mcp_server/server.py --transport http --port 8000
 Restart=always
 
 [Install]
@@ -96,7 +96,7 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         
-        # Importante para SSE
+        # Importante para Streamable HTTP
         proxy_set_header Connection '';
         proxy_http_version 1.1;
         chunked_transfer_encoding off;
@@ -108,13 +108,13 @@ server {
 
 ### 3. Conexión desde el Cliente (Claude Desktop)
 
-Una vez el servidor está corriendo en `https://mcp.tu-dominio.com/sse`, configúralo en tu local:
+Una vez el servidor está corriendo en `https://mcp.tu-dominio.com/mcp`, configúralo en tu local:
 
 ```json
 {
   "mcpServers": {
     "glpi-prod": {
-      "url": "https://mcp.tu-dominio.com/sse"
+      "url": "https://mcp.tu-dominio.com/mcp"
     }
   }
 }

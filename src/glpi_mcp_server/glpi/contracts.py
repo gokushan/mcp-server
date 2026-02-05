@@ -171,3 +171,17 @@ class ContractManager:
             ))
             
         return contracts
+
+    async def delete(self, contract_id: int, force_purge: bool = False) -> bool:
+        """Delete a contract.
+
+        Args:
+            contract_id: Contract ID
+            force_purge: If True, delete from database. If False, move to trash (is_deleted=1).
+
+        Returns:
+            True if successful
+        """
+        params = {"force_purge": "true" if force_purge else "false"}
+        endpoint = f"{self.endpoint}/{contract_id}"
+        return await self.client.delete(endpoint, params=params)

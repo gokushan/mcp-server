@@ -20,7 +20,8 @@ from glpi_mcp_server.tools.contract_tools import (
     update_glpi_contract,
     get_contract_status_by_id,
     search_contracts,
-    attach_document_to_contract
+    attach_document_to_contract,
+    delete_glpi_contract
 )
 from glpi_mcp_server.tools.invoice_tools import (
     create_glpi_invoice,
@@ -54,6 +55,7 @@ mcp.tool()(update_glpi_contract)
 mcp.tool()(get_contract_status_by_id)
 mcp.tool()(search_contracts)
 mcp.tool()(attach_document_to_contract)
+mcp.tool()(delete_glpi_contract)
 
 mcp.tool()(create_glpi_invoice)
 mcp.tool()(update_glpi_invoice)

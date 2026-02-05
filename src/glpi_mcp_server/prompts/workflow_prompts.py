@@ -90,3 +90,17 @@ def register_prompts(mcp: FastMCP):
     - Error Details (if any)
 4. Highlight any failures that require manual attention.
 """
+
+    @mcp.prompt("delete-contract")
+    def delete_contract_workflow(contract_id: str | None = None) -> str:
+        """Workflow to safely delete a contract and its documents."""
+        id_info = f" for ID {contract_id}" if contract_id else ""
+        return f"""Help me delete the contract{id_info}.
+
+1. If you don't have the ID, please search for it first using 'search_contracts'.
+2. Once you have the ID, use 'get_contract_status_by_id' to show me the contract details (Name, Number, Dates).
+3. Confirm with me: "Are you sure you want to delete Contract [Name] (ID: [ID]) and all its associated documents? This action is irreversible."
+4. If I confirm, use 'delete_glpi_contract' with the ID. 
+   - Note: Use 'force_purge=True' only if I explicitly ask to bypass the trash.
+5. Report the result, including how many documents were also removed.
+"""

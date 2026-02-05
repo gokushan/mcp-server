@@ -322,3 +322,71 @@ async def attach_document_to_contract(
         "filename": result.filename,
         "message": f"Document '{result.name}' attached successfully to Contract ID {contract_id}",
     }
+
+
+async def delete_glpi_contract(contract_id: int, force_purge: bool = False) -> dict[str, Any]:
+    """Delete a contract and all its associated documents.
+
+    Args:
+        contract_id: ID of the contract to delete
+        force_purge: If True, delete permanently. If False, move to trash.
+
+    Returns:
+        Deletion summary
+    """
+    client = await get_glpi_client()
+    contract_manager = ContractManager(client)
+    doc_manager = DocumentManager(client)
+
+    # 0. Check if contract exists first
+    try:
+        contract = await contract_manager.get(contract_id)
+    except ValueError as e:
+        # Return a descriptive error if contract is not found
+        return {
+            "success": False,
+            "contract_id": contract_id,
+            "error": "Not Found",
+            "message": f"Error: {str(e)}"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "contract_id": contract_id,
+            "error": "API Error",
+            "message": f"Failed to retrieve contract details: {str(e)}"
+        }
+
+    # 1. List associated documents
+    docs = await doc_manager.list_for_item(contract_id, "Contract")
+    
+    # 2. Delete each document
+    deleted_docs = 0
+    for doc in docs:
+        try:
+            await doc_manager.delete(doc.id)
+            deleted_docs += 1
+        except Exception as e:
+            # We continue even if one document fails
+            logger.warning(f"Failed to delete document {doc.id} for contract {contract_id}: {e}")
+
+    # 3. Delete the contract
+    try:
+        success = await contract_manager.delete(contract_id, force_purge=force_purge)
+    except Exception as e:
+        return {
+            "success": False,
+            "contract_id": contract_id,
+            "associated_documents_deleted": deleted_docs,
+            "error": "Deletion Failed",
+            "message": f"Documents were removed but contract deletion failed: {str(e)}"
+        }
+
+    return {
+        "success": success,
+        "contract_id": contract_id,
+        "contract_name": contract.name,
+        "associated_documents_deleted": deleted_docs,
+        "message": f"Contract '{contract.name}' (ID: {contract_id}) deleted successfully. {deleted_docs} associated documents removed.",
+        "purge_mode": force_purge
+    }
