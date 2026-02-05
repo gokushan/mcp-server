@@ -31,7 +31,7 @@ Si tienes el servidor corriendo en modo SSE (o cualquier modo que no sea el `dev
 ### Lanzar Inspector apuntando al servidor
 Abre una terminal nueva y ejecuta:
 ```bash
-npx -y @modelcontextprotocol/inspector http://localhost:8000/sse
+npx -y @modelcontextprotocol/inspector@latest http://localhost:8000/sse
 ```
 
 ### Configuración de Conexión en la Interfaz

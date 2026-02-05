@@ -53,7 +53,6 @@ async def create_glpi_contract(
     # Templates
     is_template: int = 0,
     template_name: str | None = None,
-    # State
     is_deleted: int = 0,
     # Legacy/Compatibility
     suppliers_id: int | None = None,

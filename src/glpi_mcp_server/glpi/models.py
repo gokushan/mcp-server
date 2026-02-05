@@ -6,7 +6,7 @@ This module defines the core domain entities used throughout the application.
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ContractData(BaseModel):
@@ -138,26 +138,26 @@ class TicketResponse(BaseModel):
 class ProcessedContract(BaseModel):
     """Processed contract data from document."""
 
-    contract_name: str
-    contract_num: str | None = None
+    name: str = Field(..., alias="contract_name")
+    num: str | None = Field(None, alias="contract_num")
     accounting_number: str | None = None
     
     parties: dict[str, Any] = Field(
         default_factory=dict, description="Contract parties (client, provider)"
     )
     
-    start_date: str | None = None
+    begin_date: str | None = Field(None, alias="start_date")
     end_date: str | None = None
-    duration_months: int | None = None
+    duration: int | None = Field(None, alias="duration_months")
     
     # 1=Tacit, 2=Express (LLM should try to map or return None)
     renewal_type: str | None = None 
-    renewal_enum: int | None = Field(None, description="Mapped renewal type: 1=Tacit/Auto, 2=Express/Manual")
+    renewal: int | None = Field(None, alias="renewal_enum", description="Mapped renewal type: 1=Tacit/Auto, 2=Express/Manual")
     
-    notice_months: int | None = None
-    billing_frequency_months: int | None = None
+    notice: int | None = Field(None, alias="notice_months")
+    billing: int | None = Field(None, alias="billing_frequency_months")
     
-    amount: float | None = None
+    cost: float | None = Field(None, alias="amount")
     currency: str = "EUR"
     payment_terms: str | dict[str, Any] | None = None
     
@@ -165,24 +165,29 @@ class ProcessedContract(BaseModel):
     sla_support_hours: dict[str, Any] | None = Field(None, description="Extracted support hours details")
     
     key_terms: list[str] = Field(default_factory=list)
-    summary: str
+    comment: str = Field(..., alias="summary")
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class ProcessedInvoice(BaseModel):
     """Processed invoice data from document."""
 
-    invoice_number: str
+    name: str = Field(..., description="Invoice name/description")
+    number: str = Field(..., alias="invoice_number")
     vendor: str
     client: str
-    invoice_date: str
-    due_date: str | None = None
+    begin_date: str = Field(..., alias="invoice_date")
+    end_date: str | None = Field(None, alias="due_date")
     items: list[dict[str, Any]] = Field(default_factory=list)
     subtotal: float
     tax: float = 0.0
-    total: float
+    value: float = Field(..., alias="total")
     currency: str = "EUR"
     payment_method: str | None = None
     bank_account: str | None = None
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class DocumentData(BaseModel):

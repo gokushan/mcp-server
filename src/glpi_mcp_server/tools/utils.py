@@ -55,3 +55,17 @@ def is_path_allowed(path_str: str) -> bool:
         if isinstance(e, ValueError) and "Security error" in str(e):
             raise
         return False
+
+
+def filter_kwargs(func, kwargs: dict) -> dict:
+    """Filter kwargs to ONLY include those that the function accepts.
+    
+    This is useful for passing dictionary data to functions that don't
+    support **kwargs (like FastMCP tools).
+    """
+    import inspect
+    sig = inspect.signature(func)
+    return {
+        k: v for k, v in kwargs.items() 
+        if k in sig.parameters
+    }

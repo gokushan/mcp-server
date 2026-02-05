@@ -58,9 +58,13 @@ async def tool_batch_contracts(path: str | None = None) -> list[dict[str, Any]]:
             contract_data = {k: v for k, v in extraction_result.items() if v is not None}
             
             # B. Create Contract (this tool also handles document attachment)
+            from glpi_mcp_server.tools.utils import filter_kwargs
+            
+            valid_data = filter_kwargs(create_glpi_contract, contract_data)
+            
             creation_result = await create_glpi_contract(
                 file_path=file_path,
-                **contract_data
+                **valid_data
             )
             
             # C. Record Success
