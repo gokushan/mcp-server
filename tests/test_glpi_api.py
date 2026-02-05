@@ -1,6 +1,6 @@
 """Tests for GLPI API client."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -21,7 +21,7 @@ def api_client():
 @pytest.mark.asyncio
 async def test_init_session(api_client):
     with patch("httpx.AsyncClient.get") as mock_get:
-        mock_response = AsyncMock()
+        mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"session_token": "sess-token"}
         mock_get.return_value = mock_response
@@ -37,7 +37,7 @@ async def test_get_request(api_client):
     api_client.session_token = "sess-token"
     
     with patch("httpx.AsyncClient.get") as mock_get:
-        mock_response = AsyncMock()
+        mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"id": 1}
         mock_get.return_value = mock_response
