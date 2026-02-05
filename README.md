@@ -16,7 +16,7 @@ MCP Server for GLPI integration with OAuth 2.1 authentication and document proce
 ### Prerequisites
 
 - Python 3.10 or higher
-- GLPI instance with OAuth 2.1 configured
+- GLPI instance
 - API access to an LLM (OpenAI, Anthropic, or local Ollama)
 
 ### Setup
@@ -104,7 +104,10 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
 ### Contract Management
 - `create_glpi_contract` - Create new contract in GLPI
 - `update_glpi_contract` - Update existing contract
-- `get_contract_status` - Query contract details
+- `get_contract_status_by_id` - Query contract details by ID
+- `search_contracts` - Search for contracts by name or number
+- `delete_glpi_contract` - Delete a contract and its documents
+- `attach_document_to_contract` - Attach a file to an existing contract
 
 ### Invoice Management
 - `create_glpi_invoice` - Create new invoice in GLPI
@@ -116,21 +119,37 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
 - `update_ticket` - Update ticket or add followup
 - `get_ticket_status` - Query ticket details
 
+### Folder & Batch Operations
+- `list_folders` - List directories within allowed roots
+- `read_path_allowed` - List files in an allowed path
+- `tool_batch_contracts` - Process multiple contracts in batch
+
 ## Available Resources
 
-- `glpi://contracts/{id}` - Contract details
-- `glpi://contracts/list` - List contracts
+- `glpi://contracts/{id}` - Contract details (JSON)
+- `glpi://contracts/list` - List of all active contracts
 - `glpi://invoices/{id}` - Invoice details
-- `glpi://invoices/list` - List invoices
+- `glpi://invoices/list` - List of invoices
 - `glpi://tickets/{id}` - Ticket details
-- `glpi://tickets/list` - List tickets
+- `glpi://tickets/list` - List of tickets
 
 ## Available Prompts
 
-- `process-and-create-contract` - Complete workflow for contract processing
-- `process-and-create-invoice` - Complete workflow for invoice processing
-- `update-contract-from-document` - Update contract from new document
-- `create-ticket-workflow` - Guided ticket creation
+- `process-and-create-contract` - Workflow to extract and create a contract
+- `process-and-create-invoice` - Workflow to extract and create an invoice
+- `update-contract-from-document` - Guided update of an existing contract
+- `find-contract` - Search and retrieve contract info
+- `create-ticket-workflow` - Guided support ticket creation
+- `process-batch-contracts` - Orchestrate batch processing of folders
+- `delete-contract` - Safe deletion flow (with confirmation)
+
+## Documentation
+
+For more detailed information, please refer to the following guides:
+
+- [Startup Guide](docs/STARTUP_GUIDE.md) - How to run the server in different modes
+- [Deployment Guide](docs/DEPLOYMENT.md) - Remote deployment and production setup
+- [Git Workflow](docs/WORKFLOW_GIT.md) - Internal development processes
 
 ## Development
 

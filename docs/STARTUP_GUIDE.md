@@ -2,6 +2,9 @@
 
 Esta guía explica las diferentes formas de arrancar y probar el servidor MCP.
 
+> [!NOTE]
+> Todos los comandos de esta guía deben ejecutarse desde la carpeta raíz del servidor (`server/`).
+
 ## 1. Modos de Ejecución
 
 Existen dos formas principales de ejecutar el servidor usando `fastmcp`:

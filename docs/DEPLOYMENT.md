@@ -10,7 +10,8 @@ Copia únicamente los siguientes archivos y carpetas de la subcarpeta `server/` 
 2.  **`pyproject.toml`**: Define las dependencias y la configuración del proyecto.
 3.  **`uv.lock`**: Asegura que se instalen exactamente las mismas versiones de las librerías.
 4.  **`.env.example`**: Plantilla para la configuración (el archivo `.env` real **NO** se debe compartir si contiene claves reales, se debe crear uno nuevo en el destino).
-5.  **`README.md`** y **`STARTUP_GUIDE.md`**: Para referencia de uso.
+5.  **`README.md`**: Referencia principal en la raíz.
+6.  **`docs/`**: Carpeta con guías detalladas (`STARTUP_GUIDE.md`, `DEPLOYMENT.md`, `architecture.md`, etc.).
 
 ### Archivos que NO debes copiar
 - `.venv/`: El entorno se debe regenerar en el destino para evitar incompatibilidades de sistema.
