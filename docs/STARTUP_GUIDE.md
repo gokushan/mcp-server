@@ -10,7 +10,7 @@ Esta guía explica las diferentes formas de arrancar y probar el servidor MCP.
 Existen dos formas principales de ejecutar el servidor usando `fastmcp`:
 
 ### Modo Desarrollo (Con Inspector)
-Este es el modo que estabas usando. Arranca el servidor y una interfaz web para pruebas.
+Este es el modo que estabas usando. Arranca el servidor en modo STDIO/STDOUT y una interfaz web para pruebas.
 ```bash
 uv run fastmcp dev src/glpi_mcp_server/server.py
 ```
@@ -24,24 +24,39 @@ uv run fastmcp run -t sse --port 8000 src/glpi_mcp_server/server.py
 ```
 *   **Transporte:** Utiliza Server-Sent Events (SSE). La URL por defecto es `http://localhost:8000/sse`.
 
-### Modo HTTP (Streamable HTTP) - RECOMENDADO
-Es el modo más moderno y eficiente, recomendado para nuevas implementaciones.
+### Modo HTTP (Streamable HTTP) - RECOMENDADO LOCAL
+Es el modo más moderno y eficiente para ejecución local fuera de Docker.
 ```bash
 uv run fastmcp run -t http --port 8000 src/glpi_mcp_server/server.py
 ```
-*   **Ideal para:** Máximo rendimiento y cumplimiento con los últimos estándares de MCP.
+*   **Ideal para:** Máximo rendimiento en local y cumplimiento con los últimos estándares de MCP.
 *   **Transporte:** Utiliza Streamable HTTP. La URL por defecto es `http://localhost:8000/mcp`.
+
+### Modo Docker (Contenedor) - IDEAL PARA DESPLIEGUE
+Arranca el servidor de forma aislada. Este modo usa el puerto **8081** por defecto para no interferir con otros servicios.
+```bash
+docker compose up -d
+```
+*   **Ideal para:** Entornos de producción o pruebas rápidas sin configurar Python localmente.
+*   **Transporte:** Streamable HTTP. La URL es `http://localhost:8081/mcp`.
+*   **Requisito:** El archivo `.env` debe usar la IP de tu máquina (ej. `192.168.71.129`) en lugar de `localhost` para conectar con GLPI.
 
 ---
 
 ## 2. Uso del MCP Inspector (Independiente)
 
-Si tienes el servidor corriendo en modo SSE (o cualquier modo que no sea el `dev` integrado), puedes lanzar el Inspector de forma independiente para conectarte a él.
+Si tienes el servidor corriendo en modo HTTP o Docker, puedes lanzar el Inspector de forma independiente para conectarte a él.
 
 ### Lanzar Inspector apuntando al servidor
-Si usas **HTTP (Recomendado)**:
+
+**Si ejecutas localmente (puerto 8000):**
 ```bash
 npx -y @modelcontextprotocol/inspector@latest http://localhost:8000/mcp
+```
+
+**Si ejecutas con Docker (puerto 8081):**
+```bash
+npx -y @modelcontextprotocol/inspector@latest http://localhost:8081/mcp
 ```
 
 Si usas **SSE**:
@@ -94,27 +109,27 @@ Una vez inicializado, ya puedes enviar otros comandos:
 
 ---
 
-## 4. Uso con Clientes Reales (Recomendado)
-
-La mejor forma de "ver" el servidor funcionando sin el inspector web es configurarlo en un cliente MCP como **Claude Desktop**.
-
-1. Abre tu configuración de Claude Desktop.
-2. Añade el servidor usando el **entry point** definido en el proyecto (esta es la forma recomendada):
+### Configuración para el Contenedor (Docker)
+Si prefieres usar la versión Docker, añade esta configuración:
 
 ```json
-"glpi-server": {
-  "command": "uv",
+"glpi-docker": {
+  "command": "npx",
   "args": [
-    "--directory", 
-    "/home/gokushan/proyectos-mcp/glpi-mcp/server", 
-    "run", 
-    "glpi-mcp-server"
+    "-y",
+    "mcp-remote",
+    "http://localhost:8081/mcp"
   ]
 }
 ```
 
-3. Reinicia Claude y verás las herramientas disponibles en el icono del martillo.
+---
 
-### Diferencia entre comandos
-*   `uv run glpi-mcp-server`: Ejecuta tu aplicación oficial. Es lo que debes usar en "producción" o uso diario.
-*   `fastmcp run ...`: Es una herramienta de utilidad. Úsala cuando quieras probar cambios rápidos o usar el Inspector (`fastmcp dev`).
+## 5. Notas sobre Puertos y Prioridad
+
+### ¿Qué puerto se usa?
+*   **Si ejecutas con `docker compose`**: El puerto está fijado en el `8081` (configurable en `server.py` vía `MCP_PORT`).
+*   **Si usas la CLI `fastmcp`**: El flag `--port` que pases por terminal tiene **prioridad total**. 
+    *   Ejemplo: `uv run fastmcp run --port 8000 ...` ignorará el puerto `8081` definido en el código.
+
+Esto es así porque cuando usas la herramienta `fastmcp`, esta importa tu servidor pero aplica su propia configuración de arranque, saltándose el bloque `if __name__ == "__main__":` de tu archivo `server.py`.

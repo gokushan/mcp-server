@@ -21,36 +21,33 @@ Copia únicamente los siguientes archivos y carpetas de la subcarpeta `server/` 
 
 ---
 
-## Pasos para la Instalación en el Remoto
+## Opción A: Despliegue con Docker (RECOMENDADO)
 
-Una vez copiados los archivos al nuevo equipo, sigue estos pasos:
+Este es el método más sencillo y robusto, ya que incluye todas las dependencias y garantiza que el entorno sea idéntico al de desarrollo.
 
-1.  **Instalar `uv`** (recomendado):
-    ```bash
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    ```
+### 1. Requisitos
+- Docker y Docker Compose instalados.
 
-2.  **Crear el archivo de configuración**:
-    ```bash
-    cp .env.example .env
-    # Edita el archivo .env con las credenciales del nuevo entorno
-    nano .env
-    ```
+### 2. Preparación
+Copia los archivos esenciales (incluyendo `Dockerfile` y `docker-compose.yml`) al servidor remoto.
 
-3.  **Instalar dependencias y preparar el entorno**:
-    ```bash
-    uv sync
-    ```
+### 3. Configuración del entorno (`.env`)
+Es fundamental que las URLs de GLPI usen la IP del host o un dominio real, ya que `localhost` dentro de Docker no alcanzará a tu máquina.
+```bash
+# Ejemplo en .env
+GLPI_API_URL=http://192.168.71.129:8080/apirest.php
+OAUTH_REDIRECT_URI=http://192.168.71.129:8080/callback
+```
 
-4.  **Ejecutar el servidor**:
-    - **Para probar**: `uv run fastmcp dev src/glpi_mcp_server/server.py`
-    - **Para producción**: `uv run fastmcp run src/glpi_mcp_server/server.py`
+### 4. Ejecución
+```bash
+docker compose up -d --build
+```
+El servidor estará disponible en el puerto **8081** (ruta `/mcp`).
 
-## Gestión en Producción
+---
 
-Para un entorno de producción estable y accesible remotamente, se recomienda usar el transporte **Streamable HTTP** y un gestor de procesos como **systemd**.
-
-### 1. Configuración de systemd (Daemonización)
+## Opción B: Despliegue Manual (Systemd)
 
 Crea un archivo de servicio para que el servidor se inicie automáticamente y se reinicie en caso de fallo:
 
@@ -109,17 +106,23 @@ server {
 
 ### 3. Conexión desde el Cliente (Claude Desktop)
 
-Una vez el servidor está corriendo en `https://mcp.tu-dominio.com/mcp`, configúralo en tu local:
+Una vez el servidor está corriendo en tu servidor remoto (ej. `mcp.tu-dominio.com`), puedes conectar Claude Desktop usando un puente:
 
 ```json
 {
   "mcpServers": {
-    "glpi-prod": {
-      "url": "https://mcp.tu-dominio.com/mcp"
+    "glpi-docker": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "http://localhost:8081/mcp"
+      ]
     }
   }
 }
 ```
+*(Nota: Cambia `localhost` por la IP o dominio de tu servidor si es remoto).*
 
 ---
 
