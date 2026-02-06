@@ -77,6 +77,17 @@ class Settings(BaseSettings):
         description="Comma-separated list of allowed root directories for file access"
     )
 
+    # MCP Transport Configuration
+    mcp_transport: str = Field(
+        default="streamable-http", description="MCP Transport method (stdio, sse, streamable-http)"
+    )
+    mcp_host: str = Field(
+        default="0.0.0.0", description="Host for the MCP Server"
+    )
+    mcp_port: int = Field(
+        default=8081, description="Port for the MCP Server"
+    )
+
     @property
     def allowed_roots_list(self) -> list[Path]:
         """Parse allowed roots into a list of Path objects.

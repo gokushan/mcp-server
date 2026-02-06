@@ -32,12 +32,36 @@ Este es el método más sencillo y robusto, ya que incluye todas las dependencia
 Copia los archivos esenciales (incluyendo `Dockerfile` y `docker-compose.yml`) al servidor remoto.
 
 ### 3. Configuración del entorno (`.env`)
-Es fundamental que las URLs de GLPI usen la IP del host o un dominio real, ya que `localhost` dentro de Docker no alcanzará a tu máquina.
-```bash
-# Ejemplo en .env
-GLPI_API_URL=http://192.168.71.129:8080/apirest.php
-OAUTH_REDIRECT_URI=http://192.168.71.129:8080/callback
-```
+
+Es fundamental configurar correctamente el archivo `.env`. A continuación se detallan las variables disponibles:
+
+| Variable | Descripción | Ejemplo / Valor por defecto |
+| :--- | :--- | :--- |
+| **GLPI API** | | |
+| `GLPI_API_URL` | URL base de la API REST de GLPI. | `http://192.168.1.100:8080/apirest.php` |
+| `GLPI_APP_TOKEN` | Token de aplicación generado en GLPI. | `your_app_token_here` |
+| `GLPI_USER_TOKEN` | Token de usuario (API Token) de GLPI. | `your_user_token_here` |
+| **OAuth 2.1** | (Opcional si se usa User Token) | |
+| `OAUTH_CLIENT_ID` | ID de cliente OAuth. | `client_id` |
+| `OAUTH_CLIENT_SECRET` | Secreto de cliente OAuth. | `client_secret` |
+| `OAUTH_AUTHORIZATION_URL` | URL de autorización OAuth. | `https://glpi.ex.com/oauth/authorize` |
+| `OAUTH_TOKEN_URL` | URL de obtención de tokens OAuth. | `https://glpi.ex.com/oauth/token` |
+| `OAUTH_REDIRECT_URI` | URI de redirección para el flujo OAuth. | `http://localhost:8080/callback` |
+| **Transporte MCP** | | |
+| `MCP_TRANSPORT` | Método de transporte del servidor. | `streamable-http` (o `stdio`, `sse`) |
+| `MCP_HOST` | Host donde escuchará el servidor. | `0.0.0.0` (para aceptar conexiones externas) |
+| `MCP_PORT` | Puerto donde escuchará el servidor. | `8081` |
+| **LLM (Procesado)** | (Solo si usas herramientas de docs) | |
+| `LLM_PROVIDER` | Proveedor de LLM a utilizar. | `openai`, `anthropic`, `ollama` |
+| `OPENAI_API_KEY` | API Key de OpenAI. | `sk-...` |
+| `ANTHROPIC_API_KEY` | API Key de Anthropic. | `sk-ant-...` |
+| **Seguridad** | | |
+| `GLPI_ALLOWED_ROOTS` | Rutas absolutas permitidas (CSV). | `/home/user/docs,/var/www/docs` |
+| `GLPI_ALLOWED_EXTENSIONS`| Extensiones de archivo permitidas. | `pdf,txt,doc,docx` |
+
+> [!IMPORTANT]
+> Si despliegas con Docker, recuerda que `localhost` se refiere al contenedor. Para conectar con GLPI usa la IP del host o el nombre del servicio en la red de Docker.
+
 
 ### 4. Ejecución
 ```bash

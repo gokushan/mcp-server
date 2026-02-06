@@ -85,14 +85,12 @@ def main():
         print("Note: LLM configuration is only required for document processing tools.")
         print("Other tools will work without LLM configuration.")
     
-    import os
-    
-    transport = os.getenv("MCP_TRANSPORT", "streamable-http")
-    host = os.getenv("MCP_HOST", "0.0.0.0")
-    port = int(os.getenv("MCP_PORT", "8081"))
-    
     # If I am in docker, I need to use 0.0.0.0. to accept all external connections    
-    mcp.run(transport=transport, host=host, port=port)
+    mcp.run(
+        transport=settings.mcp_transport, 
+        host=settings.mcp_host, 
+        port=settings.mcp_port
+    )
 
 
 
