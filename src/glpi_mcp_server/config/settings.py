@@ -41,6 +41,9 @@ class Settings(BaseSettings):
 
     # OpenAI Configuration
     openai_api_key: str | None = Field(default=None, description="OpenAI API Key")
+    openai_url: str = Field(
+        default="https://api.openai.com/v1/chat/completions", description="OpenAI API Endpoint URL"
+    )
     openai_model: str = Field(
         default="gpt-4-turbo-preview", description="OpenAI model to use"
     )

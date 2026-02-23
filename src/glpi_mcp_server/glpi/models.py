@@ -166,6 +166,8 @@ class ProcessedContract(BaseModel):
     
     key_terms: list[str] = Field(default_factory=list)
     comment: str = Field(..., alias="summary")
+    
+    prompt_injection_detected: bool = Field(False, description="Flag indicating if prompt injection was detected")
 
     model_config = ConfigDict(populate_by_name=True)
 
