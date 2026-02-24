@@ -1,12 +1,23 @@
 services:
   glpi-mcp-server:
-    build: .
+    build:
+      context: .
+      args:
+        - USER_ID=${USER_ID:-1000}
+        - GROUP_ID=${GROUP_ID:-1000}
     ports:
       - "8081:8081"
     env_file:
       - .env
+    environment:
+      - GLPI_ALLOWED_ROOTS=/app/data/facturas,/app/data/contratos1,/app/data/contratos2,/app/data/batch
+      - GLPI_FOLDER_SUCCESS=/app/data/procesados
+      - GLPI_FOLDER_ERRORES=/app/data/errores
     volumes:
-      - /home/gokushan/Documentos/facturas:/home/gokushan/Documentos/facturas
-      - /home/gokushan/Documentos/contratos1:/home/gokushan/Documentos/contratos1
-      - /home/gokushan/Documentos/contratos2:/home/gokushan/Documentos/contratos2
+      - ${DOCKER_HOST_PATH_FACTURAS}:/app/data/facturas
+      - ${DOCKER_HOST_PATH_CONTRATOS1}:/app/data/contratos1
+      - ${DOCKER_HOST_PATH_CONTRATOS2}:/app/data/contratos2
+      - ${DOCKER_HOST_PATH_BATCH}:/app/data/batch
+      - ${DOCKER_HOST_PATH_PROCESADOS}:/app/data/procesados
+      - ${DOCKER_HOST_PATH_ERRORES}:/app/data/errores
     restart: unless-stopped

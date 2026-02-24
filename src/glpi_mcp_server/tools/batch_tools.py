@@ -68,7 +68,7 @@ async def tool_batch_contracts(path: str | None = None) -> dict[str, Any]:
             # Check for prompt injection
             if extraction_result.get("prompt_injection_detected", False):
                 result_entry["status"] = "error"
-                result_entry["error"] = "Abordado: Se ha detectado un posible intento de inyección de código (Prompt Injection) en el contenido del archivo."
+                result_entry["error"] = "Abortado: Se ha detectado un posible intento de inyección de código (Prompt Injection) en el contenido del archivo."
             else:
                 # Prepare data for creation
                 # We filter out None values to let create_glpi_contract use defaults

@@ -7,9 +7,24 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 # Set working directory
 WORKDIR /app
 
-# Create a non-root user and group
-RUN groupadd -r mcpuser && useradd -r -g mcpuser mcpuser \
-    && chown mcpuser:mcpuser /app
+# Docker user configuration
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+
+# Create a non-root user and group, handling potential existing IDs
+RUN if getent group ${GROUP_ID} ; then \
+    # If group exists, use it or rename it
+    groupmod -n mcpuser $(getent group ${GROUP_ID} | cut -d: -f1); \
+    else \
+    groupadd -g ${GROUP_ID} mcpuser; \
+    fi && \
+    if getent passwd ${USER_ID} ; then \
+    # If user exists, use it or rename it
+    usermod -l mcpuser -g ${GROUP_ID} -d /app -m $(getent passwd ${USER_ID} | cut -d: -f1); \
+    else \
+    useradd -u ${USER_ID} -g ${GROUP_ID} -d /app -m mcpuser; \
+    fi && \
+    chown -R mcpuser:mcpuser /app
 
 # Copy the project files
 COPY --chown=mcpuser:mcpuser . .
