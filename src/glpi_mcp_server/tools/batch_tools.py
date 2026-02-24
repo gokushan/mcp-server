@@ -54,7 +54,8 @@ async def tool_batch_contracts(path: str | None = None) -> dict[str, Any]:
     # 2. Process each file
     for file_path in files:
         result_entry = {
-            "file": file_path,
+            "file": Path(file_path).name,
+            "processed_path": None,
             "status": "pending",
             "contract_id": None,
             "document_attached": False,
@@ -101,11 +102,11 @@ async def tool_batch_contracts(path: str | None = None) -> dict[str, Any]:
             if result_entry["status"] == "success" and settings.glpi_folder_success:
                 target_dir = Path(settings.glpi_folder_success).resolve()
                 new_path = move_file_safely(source_path, target_dir)
-                result_entry["file"] = str(new_path)
+                result_entry["processed_path"] = str(new_path)
             elif result_entry["status"] == "error" and settings.glpi_folder_errores:
                 target_dir = Path(settings.glpi_folder_errores).resolve()
                 new_path = move_file_safely(source_path, target_dir)
-                result_entry["file"] = str(new_path)
+                result_entry["processed_path"] = str(new_path)
         except Exception as move_error:
              result_entry["status"] = "error"
              existing_error = f"{result_entry.get('error', '')} | ".lstrip(' | ')

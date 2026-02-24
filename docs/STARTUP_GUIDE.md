@@ -39,7 +39,8 @@ docker compose up -d
 ```
 *   **Ideal para:** Entornos de producción o pruebas rápidas sin configurar Python localmente.
 *   **Transporte:** Streamable HTTP. La URL es `http://localhost:8081/mcp`.
-*   **Requisito:** El archivo `.env` debe usar la IP de tu máquina (ej. `192.168.71.129`) en lugar de `localhost` para conectar con GLPI.
+*   **Requisito:** El archivo `.env` debe configurarse con las rutas de tu host (`DOCKER_HOST_PATH_*`) y tus IDs de usuario (`USER_ID`, `GROUP_ID`) para que el contenedor pueda leer y mover archivos sin errores de permisos.
+*   **Nota sobre GLPI:** El archivo `.env` debe usar la IP de tu máquina (ej. `192.168.71.129`) en lugar de `localhost` para conectar con GLPI desde dentro del contenedor.
 
 ---
 

@@ -90,6 +90,9 @@ class ContractProcessor(BaseProcessor[ProcessedContract]):
             clean_r = dict(r)
             if "file" in clean_r:
                 clean_r["file"] = os.path.basename(clean_r["file"])
+            # Remove processed_path to avoid sending timestamps to LLM
+            if "processed_path" in clean_r:
+                del clean_r["processed_path"]
             clean_results.append(clean_r)
             
         system_prompt = (

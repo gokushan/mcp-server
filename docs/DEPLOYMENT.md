@@ -47,6 +47,12 @@ Es fundamental configurar correctamente el archivo `.env`. A continuación se de
 | `OAUTH_AUTHORIZATION_URL` | URL de autorización OAuth. | `https://glpi.ex.com/oauth/authorize` |
 | `OAUTH_TOKEN_URL` | URL de obtención de tokens OAuth. | `https://glpi.ex.com/oauth/token` |
 | `OAUTH_REDIRECT_URI` | URI de redirección para el flujo OAuth. | `http://localhost:8080/callback` |
+| **Versión (Tagging)** | | |
+| `APP_VERSION` | Versión de la app (tag de la imagen Docker). | `v0.1.0` |
+| **GLPI API** | | |
+| `GLPI_API_URL` | URL base de la API REST de GLPI. | `http://192.168.1.100:8080/apirest.php` |
+| `GLPI_APP_TOKEN` | Token de aplicación generado en GLPI. | `your_app_token_here` |
+| `GLPI_USER_TOKEN` | Token de usuario (API Token) de GLPI. | `your_user_token_here` |
 | **Transporte MCP** | | |
 | `MCP_TRANSPORT` | Método de transporte del servidor. | `streamable-http` (o `stdio`, `sse`) |
 | `MCP_HOST` | Host donde escuchará el servidor. | `0.0.0.0` (para aceptar conexiones externas) |
@@ -58,9 +64,50 @@ Es fundamental configurar correctamente el archivo `.env`. A continuación se de
 | **Seguridad** | | |
 | `GLPI_ALLOWED_ROOTS` | Rutas absolutas permitidas (CSV). | `/home/user/docs,/var/www/docs` |
 | `GLPI_ALLOWED_EXTENSIONS`| Extensiones de archivo permitidas. | `pdf,txt,doc,docx` |
+| `GLPI_FOLDER_SUCCESS` | Carpeta para archivos procesados con éxito. | `/app/data/procesados` |
+| `GLPI_FOLDER_ERRORES` | Carpeta para archivos que fallaron. | `/app/data/errores` |
+| **Configuración LLM Avanzada** | | |
+| `LLM_MAX_CHARS` | Máximo de caracteres a procesar por doc. | `20000` |
+| `TIMEOUT_LLM` | Timeout para respuestas del LLM (seg). | `300.0` |
+| `LLM_MOCK` | Activa el modo de simulación (Mock). | `true` / `false` |
+| **Logging** | | |
+| `LOG_LEVEL` | Nivel de detalle de los logs. | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| **Docker (Avanzado)** | (Configuración de volúmenes y permisos) | |
+| `USER_ID` | UID del usuario host (para permisos). | `1000` |
+| `GROUP_ID` | GID del usuario host (para permisos). | `1000` |
+| `DOCKER_HOST_PATH_*` | Rutas en tu equipo host. | Ver sección de volúmenes abajo. |
 
 > [!IMPORTANT]
 > Si despliegas con Docker, recuerda que `localhost` se refiere al contenedor. Para conectar con GLPI usa la IP del host o el nombre del servicio en la red de Docker.
+
+---
+
+## Configuración Avanzada de Docker (Volúmenes y Permisos)
+
+Para garantizar la portabilidad y evitar problemas de permisos al mover archivos entre el host y el contenedor, se ha implementado un sistema dinámico.
+
+### 1. Mapeo de Volúmenes Dinámicos
+En el archivo `.env`, debes definir las rutas de tu equipo host que quieres que el contenedor pueda ver. Estas variables se usan en el `docker-compose.yml`:
+
+- `DOCKER_HOST_PATH_FACTURAS`: Ruta a tus facturas.
+- `DOCKER_HOST_PATH_CONTRATOS1`: Ruta a contratos (tipo 1).
+- `DOCKER_HOST_PATH_CONTRATOS2`: Ruta a contratos (tipo 2).
+- `DOCKER_HOST_PATH_BATCH`: Ruta para procesamiento por lotes.
+- `DOCKER_HOST_PATH_PROCESADOS`: Donde se moverán los archivos con éxito.
+- `DOCKER_HOST_PATH_ERRORES`: Donde se moverán los archivos fallidos.
+
+Internamente, el contenedor mapea estas rutas a subcarpetas de `/app/data/` (ej: `/app/data/facturas`), lo que permite que la aplicación funcione de forma idéntica independientemente de dónde estén tus archivos en el host.
+
+### 2. Gestión de Permisos (UID/GID)
+Linux gestiona los permisos mediante números de ID de usuario. Para que el proceso dentro del contenedor pueda mover archivos pertenecientes a tu usuario del host:
+
+1. El contenedor crea un usuario llamado `mcpuser`.
+2. Durante la construcción (`docker compose build`), se le asignan los IDs definidos en `USER_ID` y `GROUP_ID`.
+3. Por defecto son `1000`, que es el ID estándar del primer usuario en sistemas Linux como Ubuntu.
+4. Si tu ID es distinto, cámbialo en el `.env` antes de compilar.
+
+> [!TIP]
+> Puedes saber tu ID actual ejecutando `id -u` e `id -g` en tu terminal.
 
 
 ### 4. Ejecución

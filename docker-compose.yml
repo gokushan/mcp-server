@@ -1,5 +1,7 @@
 services:
   glpi-mcp-server:
+    container_name: mcp-server-glpi
+    image: glpi-mcp-server:${APP_VERSION:-latest}
     build:
       context: .
       args:
