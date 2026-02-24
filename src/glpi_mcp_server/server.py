@@ -5,6 +5,7 @@ It configures the FastMCP server and registers tools, resources, and prompts.
 The actual Primary Adapters are the tool functions in the tools/ directory.
 """
 
+import logging
 from fastmcp import FastMCP
 
 from glpi_mcp_server.config import settings
@@ -12,6 +13,13 @@ from glpi_mcp_server.processors.contract_processor import ContractProcessor
 from glpi_mcp_server.processors.invoice_processor import InvoiceProcessor
 from glpi_mcp_server.prompts.workflow_prompts import register_prompts
 from glpi_mcp_server.resources.glpi_resources import register_resources
+
+
+# Configure logging globally
+logging.basicConfig(
+    level=settings.log_level,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 
 
 # Import Tools

@@ -7,12 +7,19 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 # Set working directory
 WORKDIR /app
 
+# Create a non-root user and group
+RUN groupadd -r mcpuser && useradd -r -g mcpuser mcpuser \
+    && chown mcpuser:mcpuser /app
+
 # Copy the project files
-COPY . .
+COPY --chown=mcpuser:mcpuser . .
 
 # Install the project dependencies using uv
 # --system flag to install in the system python since we are in a container
 RUN uv pip install --system .
+
+# Switch to the non-root user
+USER mcpuser
 
 # Expose the port the app runs on
 EXPOSE 8081

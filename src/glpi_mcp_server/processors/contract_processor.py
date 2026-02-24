@@ -11,14 +11,10 @@ import sys
 from ..config import settings
 from ..glpi.models import ProcessedContract
 from .base_processor import BaseProcessor
+from .utils import normalize_date
 
-# Configure logger to output to stderr for visibility in terminal
+# Configure logger
 logger = logging.getLogger(__name__)
-if not logger.handlers:
-    handler = logging.StreamHandler(sys.stderr)
-    handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
 
 
 class ContractProcessor(BaseProcessor[ProcessedContract]):
@@ -26,24 +22,6 @@ class ContractProcessor(BaseProcessor[ProcessedContract]):
 
     def _get_model_class(self) -> type[ProcessedContract]:
         return ProcessedContract
-
-    def _normalize_date(self, date_str: str | None) -> str | None:
-        """Normalize date string to YYYY-MM-DD format."""
-        if not date_str:
-            return None
-            
-        date_str = date_str.strip()
-        
-        # Handle DD-MM-YYYY or DD/MM/YYYY
-        import re
-        # Match DD-MM-YYYY or DD/MM/YYYY
-        dmy_pattern = r"^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$"
-        match = re.match(dmy_pattern, date_str)
-        if match:
-            day, month, year = match.groups()
-            return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
-            
-        return date_str
 
     def _get_system_prompt(self) -> str:
         return """You are an expert legal AI assistant. Your task is to extract structured data from the provided contract text.
@@ -89,182 +67,14 @@ class ContractProcessor(BaseProcessor[ProcessedContract]):
         """
 
     async def _parse_with_llm(self, text: str) -> ProcessedContract:
-        # MOCK: Comentado para usar la API real de Ollama
-        # import logging
-        # logger = logging.getLogger(__name__)
-        # logger.warning("USANDO DATOS MOCKEADOS PARA EL PROCESAMIENTO DEL CONTRATO")
-        # 
-        # dummy_data = {
-        #     "name": "CONTRATO DE SERVICIOS MANTENIMIENTO MOCK",
-        #     "num": "MOCK-2024-001",
-        #     "accounting_number": "ACCT-9999",
-        #     "parties": {
-        #         "client": {"name": "Empresa Cliente S.A.", "id": "B12345678", "address": "Calle Falsa 123, Madrid"},
-        #         "provider": {"name": "Servicios Tech S.L.", "id": "B87654321", "address": "Avenida de la Tecnología 45, Barcelona"}
-        #     },
-        #     "begin_date": "2024-01-01",
-        #     "end_date": "2024-12-31",
-        #     "duration": 12,
-        #     "renewal": 1,
-        #     "notice": 2,
-        #     "billing": 3,
-        #     "cost": 12500.50,
-        #     "currency": "EUR",
-        #     "payment_terms": "30 días después de factura",
-        #     "sla_support_hours": {
-        #         "week_begin_hour": "08:00:00",
-        #         "week_end_hour": "18:00:00",
-        #         "use_saturday": 1,
-        #         "saturday_begin_hour": "09:00:00",
-        #         "saturday_end_hour": "14:00:00",
-        #         "use_sunday": 0
-        #     },
-        #     "key_terms": ["Confidencialidad", "Nivel de servicio 99.9%", "Propiedad intelectual"],
-        #     "comment": "Contrato de mantenimiento preventivo y correctivo de sistemas informáticos (DATOS DE PRUEBA)."
-        # }
-        # return ProcessedContract(**dummy_data)
-
-        import httpx
-
-        logger.info(f"Start _parse_with_llm. Text length: {len(text)}")
-        logger.info(f"Using LLM Provider: {settings.llm_provider}")
-
-        if settings.llm_provider == "ollama":
-            async with httpx.AsyncClient() as client:
-                messages = [
-                    {"role": "system", "content": self._get_system_prompt()},
-                    {"role": "user", "content": f"Extract data from this contract:\n\n{text[:10000]}"}
-                ]
-                logger.info(f"Ollama request messages: {messages}")
-                
-                response = await client.post(
-                    f"{settings.ollama_base_url}/api/chat",
-                    json={
-                        "model": settings.ollama_model,
-                        "messages": messages,
-                        "stream": False,
-                        "format": "json"
-                    },
-                    timeout=600.0
-                )
-
-                logger.info(f"Ollama response status: {response.status_code}")
-
-                if response.status_code != 200:
-                    logger.error(f"Ollama API Error: {response.text}")
-                    raise ValueError(f"Ollama API Error: {response.text}")
-
-                result = response.json()
-                logger.debug(f"Ollama raw JSON response keys: {result.keys()}")
-                
-                content = result["message"]["content"]
-                logger.info(f"Ollama raw content received (first 200 chars): {content[:200]}...")
-
-                # Clean up if model includes markdown
-                content = content.replace("```json", "").replace("```", "").strip()
-                try:
-                    data = json.loads(content)
-                    logger.info("Successfully parsed JSON from LLM response")
-                    
-                    # Normalize dates before validation
-                    if "start_date" in data:
-                        data["start_date"] = self._normalize_date(data["start_date"])
-                    if "end_date" in data:
-                        data["end_date"] = self._normalize_date(data["end_date"])
-                        
-                    return ProcessedContract(**data)
-                except json.JSONDecodeError as e:
-                    logger.error(f"Failed to parse JSON content: {e}")
-                    logger.error(f"Content that failed to parse: {content}")
-                    raise
-
-        elif settings.llm_provider == "anthropic":
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{settings.anthropic_base_url}/messages",
-                    headers={
-                        "x-api-key": settings.anthropic_api_key,
-                        "anthropic-version": "2023-06-01",
-                        "content-type": "application/json",
-                    },
-                    json={
-                        "model": settings.anthropic_model,
-                        "max_tokens": 1024,
-                        "system": self._get_system_prompt(),
-                        "messages": [
-                            {"role": "user", "content": f"Extract data from this contract:\n\n{text[:20000]}"}
-                        ],
-                    },
-                    timeout=60.0
-                )
-
-                if response.status_code != 200:
-                    logger.error(f"Anthropic API Error: {response.text}")
-                    raise ValueError(f"Anthropic API Error: {response.text}")
-
-                result = response.json()
-                content = result["content"][0]["text"]
-                logger.info(f"Anthropic raw content received (first 200 chars): {content[:200]}...")
-
-                # Clean up json markdown if present
-                content = content.replace("```json", "").replace("```", "").strip()
-                try:
-                    data = json.loads(content)
-                    
-                    # Normalize dates before validation
-                    if "start_date" in data:
-                        data["start_date"] = self._normalize_date(data["start_date"])
-                    if "end_date" in data:
-                        data["end_date"] = self._normalize_date(data["end_date"])
-
-                    return ProcessedContract(**data)
-                except json.JSONDecodeError as e:
-                    logger.error(f"Failed to parse JSON content: {e}")
-                    raise
-
-        elif settings.llm_provider == "openai":
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    settings.openai_url,
-                    headers={
-                        "Authorization": f"Bearer {settings.openai_api_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": settings.openai_model,
-                        "messages": [
-                            {"role": "system", "content": self._get_system_prompt()},
-                            {"role": "user", "content": f"Extract data from this contract:\n\n{text[:10000]}"}
-                        ],
-                        "response_format": {"type": "json_object"}
-                    },
-                    timeout=60.0
-                )
-                
-                if response.status_code != 200:
-                    logger.error(f"OpenAI API Error: {response.text}")
-                    raise ValueError(f"OpenAI API Error: {response.text}")
-                    
-                result = response.json()
-                content = result["choices"][0]["message"]["content"]
-                logger.info(f"OpenAI raw content received (first 200 chars): {content[:200]}...")
-                
-                try:
-                    data = json.loads(content)
-                    
-                    # Normalize dates before validation
-                    if "start_date" in data:
-                        data["start_date"] = self._normalize_date(data["start_date"])
-                    if "end_date" in data:
-                        data["end_date"] = self._normalize_date(data["end_date"])
-
-                    return ProcessedContract(**data)
-                except json.JSONDecodeError as e:
-                    logger.error(f"Failed to parse JSON content: {e}")
-                    raise
+        """Override to add custom normalization logic after generic parsing."""
+        contract = await super()._parse_with_llm(text)
         
-        else:
-            raise ValueError(f"Unsupported LLM Provider: {settings.llm_provider}")
+        # Post-processing normalization
+        contract.begin_date = normalize_date(contract.begin_date)
+        contract.end_date = normalize_date(contract.end_date)
+        
+        return contract
 
     async def generate_batch_summary(self, results: list[dict]) -> str:
         """Generate a human-readable summary of batch processing results using the LLM."""
@@ -299,73 +109,11 @@ class ContractProcessor(BaseProcessor[ProcessedContract]):
         
         user_content = f"Resultados del procesamiento:\n\n{json.dumps(clean_results, indent=2, ensure_ascii=False)}"
         
-        if settings.llm_provider == "ollama":
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{settings.ollama_base_url}/api/chat",
-                    json={
-                        "model": settings.ollama_model,
-                        "messages": [
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_content}
-                        ],
-                        "stream": False
-                    },
-                    timeout=600.0
-                )
-                if response.status_code != 200:
-                    logger.error(f"Ollama API Error generating summary: {response.text}")
-                    return "Error al generar resumen con Ollama."
-                result = response.json()
-                return result["message"]["content"].strip()
-                
-        elif settings.llm_provider == "anthropic":
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{settings.anthropic_base_url}/messages",
-                    headers={
-                        "x-api-key": settings.anthropic_api_key,
-                        "anthropic-version": "2023-06-01",
-                        "content-type": "application/json",
-                    },
-                    json={
-                        "model": settings.anthropic_model,
-                        "max_tokens": 1024,
-                        "system": system_prompt,
-                        "messages": [
-                            {"role": "user", "content": user_content}
-                        ],
-                    },
-                    timeout=60.0
-                )
-                if response.status_code != 200:
-                    logger.error(f"Anthropic API Error generating summary: {response.text}")
-                    return f"Error al generar resumen con Anthropic."
-                result = response.json()
-                return result["content"][0]["text"].strip()
-                
-        elif settings.llm_provider == "openai":
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    settings.openai_url,
-                    headers={
-                        "Authorization": f"Bearer {settings.openai_api_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": settings.openai_model,
-                        "messages": [
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_content}
-                        ]
-                    },
-                    timeout=60.0
-                )
-                if response.status_code != 200:
-                    logger.error(f"OpenAI API Error generating summary: {response.text}")
-                    return f"Error al generar resumen con OpenAI."
-                result = response.json()
-                return result["choices"][0]["message"]["content"].strip()
-                
-        else:
-            return "Proveedor de LLM no soportado."
+        try:
+            return await self.llm_strategy.generate_text(
+                system_prompt=system_prompt,
+                user_content=user_content
+            )
+        except Exception as e:
+            logger.error(f"Error generating summary: {e}")
+            return f"Error al generar resumen con {settings.llm_provider}."

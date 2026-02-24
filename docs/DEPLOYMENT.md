@@ -150,8 +150,40 @@ Una vez el servidor está corriendo en tu servidor remoto (ej. `mcp.tu-dominio.c
 
 ---
 
-## Requisitos del Servidor Remoto
-- **Python 3.10+** instalado.
-- **uv** instalado globalmente o en el path del usuario.
-- Conectividad HTTPS (puerto 443) abierta hacia el exterior si usas Nginx.
-- Conectividad con la instancia de GLPI.
+---
+
+## Usuarios y Permisos Recomendados
+
+Para un despliegue seguro en entornos Linux (tanto con Docker como manual), sigue estas recomendaciones:
+
+### 1. Usuario de Ejecución
+- **NUNCA ejecutes la aplicación como `root`**.
+- En Docker, la imagen ya está configurada para usar el usuario `mcpuser`.
+- En instalaciones manuales, crea un usuario dedicado sin privilegios de sudo:
+  ```bash
+  sudo useradd -m -s /bin/bash mcp_service
+  ```
+
+### 2. Permisos de Archivos y Carpetas
+La aplicación necesita diferentes niveles de acceso según la funcionalidad:
+
+| Ruta | Permiso Requerido | Razón |
+| :--- | :--- | :--- |
+| **Código fuente (`src/`)** | Lectura (`r`) | Ejecución del código Python. |
+| **Raíces permitidas (`GLPI_ALLOWED_ROOTS`)** | Lectura (`r`) | Para que el proceso pueda leer los documentos a procesar. |
+| **Carpeta de Éxito (`GLPI_FOLDER_SUCCESS`)** | Lectura y Escritura (`rw`) | Para mover los archivos procesados correctamente. |
+| **Carpeta de Errores (`GLPI_FOLDER_ERRORES`)** | Lectura y Escritura (`rw`) | Para mover los archivos que fallaron. |
+
+**Ejemplo de configuración de permisos:**
+Si tu usuario es `mcpuser` y tus documentos están en `/opt/mcp/docs`:
+```bash
+# Cambiar el propietario de la carpeta de documentos
+sudo chown -R mcpuser:mcpuser /opt/mcp/docs
+
+# Asegurar permisos de lectura/escritura para el propietario
+chmod -R 755 /opt/mcp/docs
+```
+
+### 3. Consideraciones de Seguridad
+- **Variables de Entorno**: Asegúrate de que el archivo `.env` solo sea legible por el usuario que ejecuta el servicio (`chmod 600 .env`).
+- **Acceso a Red**: Si usas un Proxy Inverso (Nginx), el cortafuegos solo debería permitir tráfico entrante al puerto del proxy (80/443), manteniendo el puerto de la aplicación (8000/8081) cerrado al exterior.

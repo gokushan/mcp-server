@@ -64,6 +64,15 @@ class Settings(BaseSettings):
         default="http://localhost:11434", description="Ollama base URL"
     )
     ollama_model: str = Field(default="llama2", description="Ollama model to use")
+    llm_max_chars: int = Field(
+        default=20000, description="Maximum characters to send to LLM from document content"
+    )
+    timeout_llm: float = Field(
+        default=300.0, description="Default timeout for LLM requests in seconds"
+    )
+    llm_mock: bool = Field(
+        default=False, description="Enable LLM mocking for faster development"
+    )
 
     # Server Configuration
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = Field(
@@ -78,6 +87,16 @@ class Settings(BaseSettings):
     glpi_allowed_roots: str = Field(
         default="", 
         description="Comma-separated list of allowed root directories for file access"
+    )
+    
+    # Processed files destination folders
+    glpi_folder_success: str | None = Field(
+        default=None, 
+        description="Folder path where successfully processed files are moved"
+    )
+    glpi_folder_errores: str | None = Field(
+        default=None, 
+        description="Folder path where failed processed files are moved"
     )
 
     # MCP Transport Configuration

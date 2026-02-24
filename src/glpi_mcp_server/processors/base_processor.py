@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from ..config import settings
 from .document_parser import DocumentParser
+from ..llm.factory import get_llm_strategy
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -21,6 +22,7 @@ class BaseProcessor(ABC, Generic[T]):
 
     def __init__(self):
         self.parser = DocumentParser()
+        self.llm_strategy = get_llm_strategy()
 
     async def process(self, file_path: str) -> T:
         """Process a document and return structured data.
@@ -48,20 +50,15 @@ class BaseProcessor(ABC, Generic[T]):
         pass
 
     async def _parse_with_llm(self, text: str) -> T:
-        """Parse extracted text using LLM."""
-        # This is a simplified implementation. In a real scenario,
-        # we would implement the specific provider logic (OpenAI, Anthropic, etc.)
-        # For now, we'll mock the LLM interaction or use a simple HTTP call if keys are present.
-        
-        # TODO: Implement actual LLM call
-        # For prototype purposes, this would call openai/anthropic API
-        # passing the text and requesting JSON output matching the model schema.
-        
+        """Parse extracted text using LLM strategy."""
         system_prompt = self._get_system_prompt()
         model_class = self._get_model_class()
         
-        # Placeholder implementation
-        # implementation detail: We would construct a prompt like:
-        # "Extract the following fields from the text as JSON: {schema}"
+        # Use strategy to get JSON data
+        data_dict = await self.llm_strategy.generate_json(
+            system_prompt=system_prompt,
+            user_content=f"Extract data from this document:\n\n{text[:settings.llm_max_chars]}"
+        )
         
-        raise NotImplementedError("LLM integration to be implemented")
+        # Validar con Pydantic
+        return model_class(**data_dict)

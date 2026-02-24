@@ -1,5 +1,4 @@
-"""Utilities for tools."""
-
+from pathlib import Path
 from ..glpi.api_client import GLPIAPIClient
 
 
@@ -25,7 +24,6 @@ def is_path_allowed(path_str: str) -> bool:
     Returns:
         True if allowed, False otherwise
     """
-    from pathlib import Path
     from ..config import settings
     
     # 1. Path Traversal Check (Prevention)
@@ -69,3 +67,34 @@ def filter_kwargs(func, kwargs: dict) -> dict:
         k: v for k, v in kwargs.items() 
         if k in sig.parameters
     }
+
+
+def move_file_safely(source_path: str | Path, target_dir: str | Path) -> Path:
+    """Move a file to a target directory with a unique name to avoid collisions.
+    
+    The new filename will have the format: YYYYMMDD_HHMMSS_RANDOM_original_name
+    
+    Args:
+        source_path: Path to the source file
+        target_dir: Path to the destination directory
+        
+    Returns:
+        The new Path of the moved file
+    """
+    import shutil
+    import datetime
+    import secrets
+    import string
+
+    src = Path(source_path)
+    dst_dir = Path(target_dir).resolve()
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    random_suffix = ''.join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(4))
+    
+    new_filename = f"{timestamp}_{random_suffix}_{src.name}"
+    target_path = dst_dir / new_filename
+    
+    shutil.move(str(src), str(target_path))
+    return target_path
