@@ -99,6 +99,20 @@ class Settings(BaseSettings):
         description="Folder path where failed processed files are moved"
     )
 
+    # Host paths for translation (used when running in Docker)
+    glpi_host_allowed_roots: str = Field(
+        default="", 
+        description="Comma-separated list of host root directories (for reporting to client)"
+    )
+    glpi_host_folder_success: str | None = Field(
+        default=None, 
+        description="Host path for success folder"
+    )
+    glpi_host_folder_errores: str | None = Field(
+        default=None, 
+        description="Host path for error folder"
+    )
+
     # MCP Transport Configuration
     mcp_transport: str = Field(
         default="streamable-http", description="MCP Transport method (stdio, sse, streamable-http)"
@@ -130,8 +144,9 @@ class Settings(BaseSettings):
                 raise ValueError(f"Security error: Allowed root path '{clean_path}' cannot contain '..'")
             
             p = Path(clean_path)
+            # We want to be strict with global allowed roots, they must be absolute
             if not p.is_absolute():
-                raise ValueError(f"Security error: Allowed root path '{clean_path}' must be an absolute path")
+                 raise ValueError(f"Security error: Allowed root path '{clean_path}' must be an absolute path")
                 
             paths.append(p.resolve())
         return paths
@@ -140,6 +155,30 @@ class Settings(BaseSettings):
         default="pdf,txt,doc,docx",
         description="Comma-separated list of allowed file extensions"
     )
+
+    @property
+    def folder_success_path(self) -> Path | None:
+        """Get the absolute Path object for the success folder."""
+        if not self.glpi_folder_success:
+            return None
+        # Ensure we strip whitespace that might come from .env
+        clean_path = self.glpi_folder_success.strip()
+        if not clean_path:
+            return None
+        p = Path(clean_path)
+        return p.resolve() if p.is_absolute() else None
+
+    @property
+    def folder_errores_path(self) -> Path | None:
+        """Get the absolute Path object for the error folder."""
+        if not self.glpi_folder_errores:
+            return None
+        # Ensure we strip whitespace that might come from .env
+        clean_path = self.glpi_folder_errores.strip()
+        if not clean_path:
+            return None
+        p = Path(clean_path)
+        return p.resolve() if p.is_absolute() else None
 
     @property
     def allowed_extensions_list(self) -> list[str]:
@@ -152,6 +191,32 @@ class Settings(BaseSettings):
             for ext in self.glpi_allowed_extensions.split(",") 
             if ext.strip()
         ]
+
+    @property
+    def host_allowed_roots_list(self) -> list[str]:
+        """Parse host allowed roots into a list of strings."""
+        if not self.glpi_host_allowed_roots:
+            return [str(p) for p in self.allowed_roots_list]
+        
+        return [
+            path.strip() 
+            for path in self.glpi_host_allowed_roots.split(",") 
+            if path.strip()
+        ]
+
+    @property
+    def host_folder_success(self) -> str | None:
+        """Get host success folder path."""
+        if self.glpi_host_folder_success:
+            return self.glpi_host_folder_success.strip()
+        return str(self.folder_success_path) if self.folder_success_path else None
+
+    @property
+    def host_folder_errores(self) -> str | None:
+        """Get host error folder path."""
+        if self.glpi_host_folder_errores:
+            return self.glpi_host_folder_errores.strip()
+        return str(self.folder_errores_path) if self.folder_errores_path else None
 
     def validate_llm_config(self) -> None:
         """Validate LLM configuration based on provider."""

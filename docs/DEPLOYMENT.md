@@ -64,8 +64,12 @@ Es fundamental configurar correctamente el archivo `.env`. A continuación se de
 | **Seguridad** | | |
 | `GLPI_ALLOWED_ROOTS` | Rutas absolutas permitidas (CSV). | `/home/user/docs,/var/www/docs` |
 | `GLPI_ALLOWED_EXTENSIONS`| Extensiones de archivo permitidas. | `pdf,txt,doc,docx` |
-| `GLPI_FOLDER_SUCCESS` | Carpeta para archivos procesados con éxito. | `/app/data/procesados` |
-| `GLPI_FOLDER_ERRORES` | Carpeta para archivos que fallaron. | `/app/data/errores` |
+| `GLPI_FOLDER_SUCCESS` | Carpeta para archivos procesados con éxito. | `/home/user/procesados` |
+| `GLPI_FOLDER_ERRORES` | Carpeta para archivos que fallaron. | `/home/user/errores` |
+| **Traducción de Rutas** | (Solo para Docker) | |
+| `GLPI_HOST_ALLOWED_ROOTS`| Rutas reales en el host (CSV). | `/home/gokushan/docs,...` |
+| `GLPI_HOST_FOLDER_SUCCESS`| Ruta real del host para éxitos. | `/home/gokushan/exito` |
+| `GLPI_HOST_FOLDER_ERRORES`| Ruta real del host para errores. | `/home/gokushan/error` |
 | **Configuración LLM Avanzada** | | |
 | `LLM_MAX_CHARS` | Máximo de caracteres a procesar por doc. | `20000` |
 | `TIMEOUT_LLM` | Timeout para respuestas del LLM (seg). | `300.0` |
@@ -115,6 +119,18 @@ Linux gestiona los permisos mediante números de ID de usuario. Para que el proc
 docker compose up -d --build
 ```
 El servidor estará disponible en el puerto **8081** (ruta `/mcp`).
+
+---
+
+## Capa de Traducción de Rutas (Host vs Contenedor)
+
+Cuando el servidor corre en Docker, las rutas internas (`/app/data/...`) son diferentes de las rutas fuera de Docker (`/home/user/...`). Para que el cliente MCP vea siempre tus rutas reales, se usa una **Capa de Traducción**:
+
+- **¿Cómo funciona?**: El servidor lee archivos en la ruta del contenedor pero le dice al cliente MCP que están en la ruta del host.
+- **Configuración**: 
+    1. Define tus rutas reales en las variables `GLPI_HOST_*`.
+    2. Asegúrate de que el orden de las rutas en `GLPI_HOST_ALLOWED_ROOTS` coincida con el de `GLPI_ALLOWED_ROOTS`.
+- **Beneficio**: No necesitas cambiar nada en tu cliente MCP si alternas entre ejecutar el servidor en local o en Docker; las rutas reportadas serán siempre las mismas.
 
 ---
 

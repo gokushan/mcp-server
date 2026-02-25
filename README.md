@@ -120,8 +120,8 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
 - `get_ticket_status` - Query ticket details
 
 ### Folder & Batch Operations
-- `list_folders` - List directories within allowed roots
-- `read_path_allowed` - List files in an allowed path
+- `list_folders` - List directories within allowed roots (supports path translation)
+- `read_path_allowed` - List files in an allowed path (supports path translation)
 - `tool_batch_contracts` - Process multiple contracts in batch
 
 ## Available Resources

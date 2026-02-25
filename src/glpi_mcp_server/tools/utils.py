@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Mapping
 from ..glpi.api_client import GLPIAPIClient
 
 
@@ -13,6 +14,77 @@ async def get_glpi_client() -> GLPIAPIClient:
         # If initialization fails, new calls will try to re-init
         pass
     return client
+
+
+def to_host_path(internal_path: str | Path) -> str:
+    """Translate an internal container path to a host path.
+    
+    Args:
+        internal_path: The path inside the container.
+        
+    Returns:
+        The corresponding host path, or the original path if no match.
+    """
+    from ..config import settings
+    
+    p = str(Path(internal_path).resolve())
+    
+    # 1. Check success/error folders
+    int_success = str(settings.folder_success_path) if settings.folder_success_path else None
+    int_errores = str(settings.folder_errores_path) if settings.folder_errores_path else None
+    
+    if int_success and p.startswith(int_success):
+        return p.replace(int_success, settings.host_folder_success or int_success, 1)
+    
+    if int_errores and p.startswith(int_errores):
+        return p.replace(int_errores, settings.host_folder_errores or int_errores, 1)
+    
+    # 2. Check roots
+    int_roots = [str(r) for r in settings.allowed_roots_list]
+    host_roots = settings.host_allowed_roots_list
+    
+    # Use zip to map 1:1 by order
+    for int_root, host_root in zip(int_roots, host_roots):
+        if p.startswith(int_root):
+            return p.replace(int_root, host_root, 1)
+            
+    return p
+
+
+def to_internal_path(host_path: str | Path) -> str:
+    """Translate a host path to an internal container path.
+    
+    Args:
+        host_path: The path on the host.
+        
+    Returns:
+        The corresponding internal path, or the original path if no match.
+    """
+    from ..config import settings
+    
+    h = str(host_path)
+    
+    # 1. Check success/error folders
+    host_success = settings.host_folder_success
+    host_errores = settings.host_folder_errores
+    
+    if host_success and h.startswith(host_success):
+        int_path = str(settings.folder_success_path) if settings.folder_success_path else host_success
+        return h.replace(host_success, int_path, 1)
+        
+    if host_errores and h.startswith(host_errores):
+        int_path = str(settings.folder_errores_path) if settings.folder_errores_path else host_errores
+        return h.replace(host_errores, int_path, 1)
+        
+    # 2. Check roots
+    int_roots = [str(r) for r in settings.allowed_roots_list]
+    host_roots = settings.host_allowed_roots_list
+    
+    for host_root, int_root in zip(host_roots, int_roots):
+        if h.startswith(host_root):
+            return h.replace(host_root, int_root, 1)
+            
+    return h
 
 
 def is_path_allowed(path_str: str) -> bool:

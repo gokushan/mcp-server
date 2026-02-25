@@ -9,7 +9,7 @@ from typing import Any
 from glpi_mcp_server.glpi.contracts import ContractManager
 from glpi_mcp_server.glpi.documents import DocumentManager
 from glpi_mcp_server.glpi.models import ContractData
-from glpi_mcp_server.tools.utils import get_glpi_client, is_path_allowed
+from glpi_mcp_server.tools.utils import get_glpi_client, is_path_allowed, to_internal_path
 from glpi_mcp_server.config import settings
 from pathlib import Path
 
@@ -101,6 +101,10 @@ async def create_glpi_contract(
     """
     client = await get_glpi_client()
     manager = ContractManager(client)
+    
+    # Translate file_path to internal if provided
+    if file_path:
+        file_path = to_internal_path(file_path)
     
     # Convert dates from string to date objects inside ContractData validation
     data = ContractData(
@@ -282,13 +286,8 @@ async def attach_document_to_contract(
         file_path: Absolute path to the document file
         document_name: Optional name for the document (defaults to contract name)
     
-    Returns:
-        Document attachment details
-        
-    Raises:
-        FileNotFoundError: If file doesn't exist
-        ValueError: If contract doesn't exist, file is invalid, or access denied
     """
+    file_path = to_internal_path(file_path)
     if not is_path_allowed(file_path):
         raise ValueError(f"Access to path '{file_path}' is denied. Check your configured allowed roots.")
 

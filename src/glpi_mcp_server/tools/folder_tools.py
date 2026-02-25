@@ -3,18 +3,66 @@
 
 from typing import Any
 from ..config import settings
+from .utils import to_host_path, to_internal_path
 
 
-async def list_folders() -> list[str]:
-    """List allowed folders for file access.
+async def list_folders() -> dict[str, Any]:
+    """List allowed folders for file access categorized by purpose.
     
-    This tool returns the list of root directories that the MCP server
-    is allowed to access.
+    This tool returns a dictionary of directories the MCP server
+    is allowed to access, categorized by their use:
+    - to_process: Source directories where files are picked up.
+    - processed: Directory where successfully processed files are moved.
+    - errors: Directory where failed files are moved.
+    - success: Boolean indicating if all defined paths are accessible.
     
     Returns:
-        List of absolute paths.
+        Dictionary with categories of absolute paths and overall status.
     """
-    return [str(path) for path in settings.allowed_roots_list]
+    result = {
+        "to_process": [],
+        "processed": [],
+        "errors": [],
+        "success": True
+    }
+    
+    all_ok = True
+    
+    # 1. Source folders (to process)
+    for p in settings.allowed_roots_list:
+        try:
+            if p.exists() and p.is_dir():
+                result["to_process"].append(to_host_path(p))
+            else:
+                all_ok = False
+        except Exception:
+            all_ok = False
+            continue
+            
+    # 2. Processed folder
+    if settings.folder_success_path:
+        p = settings.folder_success_path
+        try:
+            if p.exists() and p.is_dir():
+                result["processed"].append(to_host_path(p))
+            else:
+                all_ok = False
+        except Exception:
+            all_ok = False
+            
+    # 3. Errors folder
+    if settings.folder_errores_path:
+        p = settings.folder_errores_path
+        try:
+            if p.exists() and p.is_dir():
+                result["errors"].append(to_host_path(p))
+            else:
+                all_ok = False
+        except Exception:
+            all_ok = False
+            
+    result["success"] = all_ok
+    return result
 
 
 async def read_path_allowed(path: str | None = None) -> list[str]:
@@ -32,6 +80,10 @@ async def read_path_allowed(path: str | None = None) -> list[str]:
     """
     from ..tools.utils import is_path_allowed
     from pathlib import Path
+    
+    # Translate host path to internal path if provided
+    if path:
+        path = to_internal_path(path)
     
     files = []
     allowed_exts = set(settings.allowed_extensions_list)
@@ -54,6 +106,6 @@ async def read_path_allowed(path: str | None = None) -> list[str]:
                 # Check extension (case insensitive)
                 ext = child.suffix.lower().lstrip(".")
                 if ext in allowed_exts:
-                    files.append(str(child.resolve()))
+                    files.append(to_host_path(child))
                     
     return files

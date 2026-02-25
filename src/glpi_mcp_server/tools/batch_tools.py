@@ -9,7 +9,7 @@ from glpi_mcp_server.tools.folder_tools import read_path_allowed
 from glpi_mcp_server.tools.document_tools import process_contract
 from glpi_mcp_server.tools.contract_tools import create_glpi_contract
 from glpi_mcp_server.processors.contract_processor import ContractProcessor
-from glpi_mcp_server.tools.utils import filter_kwargs, move_file_safely
+from glpi_mcp_server.tools.utils import filter_kwargs, move_file_safely, to_internal_path, to_host_path
 from glpi_mcp_server.config import settings
 
 
@@ -98,15 +98,15 @@ async def tool_batch_contracts(path: str | None = None) -> dict[str, Any]:
             
         # >> Mover el archivo a la carpeta correspondiente con nombre seguro <<
         try:
-            source_path = Path(file_path)
+            source_path = Path(to_internal_path(file_path))
             if result_entry["status"] == "success" and settings.glpi_folder_success:
                 target_dir = Path(settings.glpi_folder_success).resolve()
                 new_path = move_file_safely(source_path, target_dir)
-                result_entry["processed_path"] = str(new_path)
+                result_entry["processed_path"] = to_host_path(new_path)
             elif result_entry["status"] == "error" and settings.glpi_folder_errores:
                 target_dir = Path(settings.glpi_folder_errores).resolve()
                 new_path = move_file_safely(source_path, target_dir)
-                result_entry["processed_path"] = str(new_path)
+                result_entry["processed_path"] = to_host_path(new_path)
         except Exception as move_error:
              result_entry["status"] = "error"
              existing_error = f"{result_entry.get('error', '')} | ".lstrip(' | ')

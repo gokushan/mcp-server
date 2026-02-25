@@ -10,7 +10,7 @@ from typing import Any
 from ..glpi.models import ProcessedContract, ProcessedInvoice
 from ..processors.contract_processor import ContractProcessor
 from ..processors.invoice_processor import InvoiceProcessor
-from ..tools.utils import is_path_allowed
+from ..tools.utils import is_path_allowed, to_internal_path
 
 
 async def process_contract(file_path: str) -> dict[str, Any]:
@@ -22,6 +22,7 @@ async def process_contract(file_path: str) -> dict[str, Any]:
     Returns:
         Extracted contract data
     """
+    file_path = to_internal_path(file_path)
     if not is_path_allowed(file_path):
         raise ValueError(f"Access to path '{file_path}' is denied. Check allowed roots.")
 
@@ -39,6 +40,7 @@ async def process_invoice(file_path: str) -> dict[str, Any]:
     Returns:
         Extracted invoice data
     """
+    file_path = to_internal_path(file_path)
     if not is_path_allowed(file_path):
         raise ValueError(f"Access to path '{file_path}' is denied. Check allowed roots.")
 
