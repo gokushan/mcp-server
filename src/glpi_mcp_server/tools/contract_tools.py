@@ -10,6 +10,7 @@ from glpi_mcp_server.glpi.contracts import ContractManager
 from glpi_mcp_server.glpi.documents import DocumentManager
 from glpi_mcp_server.glpi.models import ContractData
 from glpi_mcp_server.tools.utils import get_glpi_client, is_path_allowed, to_internal_path
+from glpi_mcp_server.tools.error_codes import get_error_response
 from glpi_mcp_server.config import settings
 from pathlib import Path
 
@@ -149,9 +150,18 @@ async def create_glpi_contract(
         if not is_path_allowed(file_path):
              response["document_attached"] = False
              response["document_error"] = f"Access to path '{file_path}' is denied. Check allowed roots."
+             response.update(get_error_response(103))
              response["warning"] = (
                  f"Contract created (ID: {result.id}), but document attachment failed: "
                  "Access denied."
+             )
+        elif not Path(file_path).exists():
+             response["document_attached"] = False
+             response["document_error"] = f"File not found: {file_path}"
+             response.update(get_error_response(104))
+             response["warning"] = (
+                 f"Contract created (ID: {result.id}), but document attachment failed: "
+                 "File not found."
              )
         else:
             # Check extension
@@ -159,6 +169,7 @@ async def create_glpi_contract(
             if ext not in settings.allowed_extensions_list:
                 response["document_attached"] = False
                 response["document_error"] = f"File extension '{ext}' is not allowed. Allowed: {settings.allowed_extensions_list}"
+                response.update(get_error_response(102))
                 response["warning"] = (
                     f"Contract created (ID: {result.id}), but document attachment failed: "
                     f"Extension '{ext}' not allowed."
@@ -179,8 +190,9 @@ async def create_glpi_contract(
             # Contract created successfully, but document attachment failed
             response["document_attached"] = False
             response["document_error"] = str(e)
+            response.update(get_error_response(100))
             response["warning"] = (
-                f"Contract created successfully (ID: {result.id}), "
+                f"Contract successfully created (ID: {result.id}), "
                 f"but document attachment failed: {str(e)}. "
                 "You can retry using the 'attach_document_to_contract' tool."
             )
@@ -288,39 +300,62 @@ async def attach_document_to_contract(
     
     """
     file_path = to_internal_path(file_path)
-    if not is_path_allowed(file_path):
-        raise ValueError(f"Access to path '{file_path}' is denied. Check your configured allowed roots.")
+    try:
+        if not is_path_allowed(file_path):
+             return {
+                 "success": False,
+                 "error": f"Access to path '{file_path}' is denied. Check your configured allowed roots.",
+                 **get_error_response(103)
+             }
 
-    # Check extension
-    ext = Path(file_path).suffix.lower().lstrip(".")
-    if ext not in settings.allowed_extensions_list:
-        raise ValueError(f"File extension '{ext}' is not allowed. Allowed: {settings.allowed_extensions_list}")
+        # Check existence
+        if not Path(file_path).exists():
+             return {
+                 "success": False,
+                 "error": f"File not found: {file_path}",
+                 **get_error_response(104)
+             }
 
-    client = await get_glpi_client()
-    
-    # Get contract name if document_name not provided
-    if not document_name:
-        contract_manager = ContractManager(client)
-        contract = await contract_manager.get(contract_id)
-        document_name = contract.name
-    
-    # Attach document
-    doc_manager = DocumentManager(client)
-    result = await doc_manager.attach_to_item(
-        file_path=file_path,
-        item_id=contract_id,
-        item_type="Contract",
-        document_name=document_name,
-    )
-    
-    return {
-        "success": True,
-        "contract_id": contract_id,
-        "document_id": result.id,
-        "document_name": result.name,
-        "filename": result.filename,
-        "message": f"Document '{result.name}' attached successfully to Contract ID {contract_id}",
-    }
+        # Check extension
+        ext = Path(file_path).suffix.lower().lstrip(".")
+        if ext not in settings.allowed_extensions_list:
+             return {
+                 "success": False,
+                 "error": f"File extension '{ext}' is not allowed. Allowed: {settings.allowed_extensions_list}",
+                 **get_error_response(102)
+             }
+
+        client = await get_glpi_client()
+        
+        # Get contract name if document_name not provided
+        if not document_name:
+            contract_manager = ContractManager(client)
+            contract = await contract_manager.get(contract_id)
+            document_name = contract.name
+        
+        # Attach document
+        doc_manager = DocumentManager(client)
+        result = await doc_manager.attach_to_item(
+            file_path=file_path,
+            item_id=contract_id,
+            item_type="Contract",
+            document_name=document_name,
+        )
+        
+        return {
+            "success": True,
+            "contract_id": contract_id,
+            "document_id": result.id,
+            "document_name": result.name,
+            "filename": result.filename,
+            "message": f"Document '{result.name}' attached successfully to Contract ID {contract_id}",
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            **get_error_response(100)
+        }
 
 
 async def delete_glpi_contract(contract_id: int, force_purge: bool = False) -> dict[str, Any]:

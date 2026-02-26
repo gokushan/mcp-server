@@ -11,6 +11,7 @@ from glpi_mcp_server.tools.contract_tools import create_glpi_contract
 from glpi_mcp_server.processors.contract_processor import ContractProcessor
 from glpi_mcp_server.tools.utils import filter_kwargs, move_file_safely, to_internal_path, to_host_path
 from glpi_mcp_server.config import settings
+from glpi_mcp_server.tools.error_codes import get_error_response
 
 
 
@@ -34,15 +35,29 @@ async def tool_batch_contracts(path: str | None = None) -> dict[str, Any]:
     
     # 1. Get list of files
     try:
-        files = await read_path_allowed(path)
+        read_result = await read_path_allowed(path)
+        if "error_code" in read_result:
+             # If read_path_allowed returned a structured error, we return it
+             return {
+                 "results": [{
+                     "file": path or "ALL_ROOTS",
+                     "status": "error",
+                     "error": read_result.get("error"),
+                     "error_code": read_result.get("error_code"),
+                     "error_description": read_result.get("error_description")
+                 }],
+                 "summary_text": f"Error al listar archivos: {read_result.get('error')}"
+             }
+        files = read_result.get("files", [])
     except Exception as e:
         return {
             "results": [{
                 "file": path or "ALL_ROOTS",
                 "status": "error",
-                "error": f"Failed to list files: {str(e)}"
+                "error": f"Unexpected error listing files: {str(e)}",
+                **get_error_response(104 if "not found" in str(e).lower() else 103)
             }],
-            "summary_text": f"Error crítico al intentar listar los archivos: {str(e)}"
+            "summary_text": f"Error crítico inesperado al listar archivos: {str(e)}"
         }
 
     if not files:
@@ -59,7 +74,9 @@ async def tool_batch_contracts(path: str | None = None) -> dict[str, Any]:
             "status": "pending",
             "contract_id": None,
             "document_attached": False,
-            "error": None
+            "error": None,
+            "error_code": None,
+            "error_description": None
         }
         
         try:
@@ -70,6 +87,7 @@ async def tool_batch_contracts(path: str | None = None) -> dict[str, Any]:
             if extraction_result.get("prompt_injection_detected", False):
                 result_entry["status"] = "error"
                 result_entry["error"] = "Abortado: Se ha detectado un posible intento de inyección de código (Prompt Injection) en el contenido del archivo."
+                result_entry.update(get_error_response(101))
             else:
                 # Prepare data for creation
                 # We filter out None values to let create_glpi_contract use defaults
@@ -95,6 +113,17 @@ async def tool_batch_contracts(path: str | None = None) -> dict[str, Any]:
             # Record Failure
             result_entry["status"] = "error"
             result_entry["error"] = str(e)
+            
+            # Map error codes
+            err_str = str(e).lower()
+            if "not found" in err_str or "no exist" in err_str or "not exist" in err_str:
+                result_entry.update(get_error_response(104))
+            elif "not allowed" in err_str and "extension" in err_str:
+                result_entry.update(get_error_response(102))
+            elif "not allowed" in err_str or "denied" in err_str:
+                result_entry.update(get_error_response(103))
+            else:
+                result_entry.update(get_error_response(100))
             
         # >> Mover el archivo a la carpeta correspondiente con nombre seguro <<
         try:
