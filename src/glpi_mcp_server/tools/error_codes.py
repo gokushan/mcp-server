@@ -5,8 +5,8 @@ ERROR_CODES = {
     101: "File with possible prompt injection",
     102: "Extension not allowed",
     103: "Read path not allowed",
-    104: "Path doesn't exist"
-
+    104: "Path doesn't exist",
+    105: "LLM timeout or cancelled"
 }
 
 def get_error_response(code: int) -> dict:

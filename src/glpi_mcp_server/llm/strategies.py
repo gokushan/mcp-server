@@ -7,6 +7,12 @@ from ..config import settings
 
 logger = logging.getLogger(__name__)
 
+
+class LLMCancelledError(RuntimeError):
+    """Raised when an LLM call is cancelled or times out (e.g. MCP session disconnect)."""
+    pass
+
+
 class LLMStrategy(ABC):
     """Abstract base class for LLM provider strategies."""
 
@@ -157,58 +163,107 @@ class OllamaStrategy(LLMStrategy):
     """Ollama implementation of LLM Strategy."""
 
     async def generate_json(self, system_prompt: str, user_content: str, timeout: float | None = None) -> dict[str, Any]:
-        logger.info("Ollama Request - System: %s", system_prompt)
-        logger.info("Ollama Request - User Content: %s", user_content)
-        
+        url = f"{settings.ollama_base_url}/api/chat"
+        model = settings.ollama_model
         request_timeout = timeout if timeout is not None else settings.timeout_llm
+        logger.info("[Ollama/JSON] Calling %s | model=%s | timeout=%ss", url, model, request_timeout)
+        logger.debug("[Ollama/JSON] system_prompt=%s", system_prompt[:300])
+        logger.debug("[Ollama/JSON] user_content (first 500 chars)=%s", user_content[:500])
         
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{settings.ollama_base_url}/api/chat",
-                json={
-                    "model": settings.ollama_model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_content}
-                    ],
-                    "stream": False,
-                    "format": "json"
-                },
-                timeout=request_timeout
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    url,
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_content}
+                        ],
+                        "stream": False,
+                        "format": "json"
+                    },
+                    timeout=request_timeout
+                )
+
+                logger.info("[Ollama/JSON] HTTP status: %s", response.status_code)
+
+                if response.status_code != 200:
+                    logger.error("[Ollama/JSON] Error response body: %s", response.text)
+                    raise ValueError(f"Ollama API Error: {response.status_code}")
+
+                result = response.json()
+                content = result["message"]["content"]
+                logger.debug("[Ollama/JSON] Raw content from Ollama: %s", content)
+
+                try:
+                    parsed = json.loads(self._clean_json_content(content))
+                    logger.info("[Ollama/JSON] JSON parsed successfully. Keys: %s", list(parsed.keys()))
+                    return parsed
+                except json.JSONDecodeError as json_err:
+                    logger.error("[Ollama/JSON] JSON parsing FAILED. Error: %s | Raw content: %s", json_err, content)
+                    raise
+        except httpx.TimeoutException as te:
+            logger.error("[Ollama/JSON] Request TIMED OUT after %ss. Error: %s", request_timeout, te)
+            raise LLMCancelledError(f"Ollama request timed out after {request_timeout}s") from te
+        except httpx.ConnectError as ce:
+            logger.error("[Ollama/JSON] Connection ERROR to %s. Is Ollama running? Error: %s", url, ce)
+            raise
+        except BaseException as be:
+            # CancelledError (anyio/asyncio) is a BaseException, not Exception.
+            # It is raised when the MCP session loop cancels the task (e.g. client disconnects).
+            logger.error(
+                "[Ollama/JSON] Task CANCELLED while waiting for Ollama response "
+                "(likely MCP session timeout/disconnect). type=%s | error=%s",
+                type(be).__name__, be
             )
-
-            if response.status_code != 200:
-                logger.error(f"Ollama API Error: {response.text}")
-                raise ValueError(f"Ollama API Error: {response.status_code}")
-
-            result = response.json()
-            content = result["message"]["content"]
-            return json.loads(self._clean_json_content(content))
+            raise LLMCancelledError(f"Ollama call cancelled by MCP session ({type(be).__name__})") from be
 
     async def generate_text(self, system_prompt: str, user_content: str, timeout: float | None = None) -> str:
-        logger.info("Ollama Request (Text) - System: %s", system_prompt)
-        logger.info("Ollama Request (Text) - User Content: %s", user_content)
-        
+        url = f"{settings.ollama_base_url}/api/chat"
+        model = settings.ollama_model
         request_timeout = timeout if timeout is not None else settings.timeout_llm
+        logger.info("[Ollama/Text] Calling %s | model=%s | timeout=%ss", url, model, request_timeout)
+        logger.debug("[Ollama/Text] system_prompt=%s", system_prompt[:300])
         
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{settings.ollama_base_url}/api/chat",
-                json={
-                    "model": settings.ollama_model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_content}
-                    ],
-                    "stream": False
-                },
-                timeout=request_timeout
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    url,
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_content}
+                        ],
+                        "stream": False
+                    },
+                    timeout=request_timeout
+                )
+                logger.info("[Ollama/Text] HTTP status: %s", response.status_code)
+                if response.status_code != 200:
+                    logger.error("[Ollama/Text] Error response body: %s", response.text)
+                    raise ValueError(f"Ollama API Error: {response.status_code}")
+                result = response.json()
+                content = result["message"]["content"].strip()
+                logger.info("[Ollama/Text] Response received. Length: %d chars", len(content))
+                logger.debug("[Ollama/Text] Raw content: %s", content[:500])
+                return content
+        except httpx.TimeoutException as te:
+            logger.error("[Ollama/Text] Request TIMED OUT after %ss. Error: %s", request_timeout, te)
+            raise LLMCancelledError(f"Ollama request timed out after {request_timeout}s") from te
+        except httpx.ConnectError as ce:
+            logger.error("[Ollama/Text] Connection ERROR to %s. Is Ollama running? Error: %s", url, ce)
+            raise
+        except BaseException as be:
+            # CancelledError (anyio/asyncio) is a BaseException, not Exception.
+            # It is raised when the MCP session loop cancels the task (e.g. client disconnects).
+            logger.error(
+                "[Ollama/Text] Task CANCELLED while waiting for Ollama response "
+                "(likely MCP session timeout/disconnect). type=%s | error=%s",
+                type(be).__name__, be
             )
-            if response.status_code != 200:
-                logger.error(f"Ollama API Error: {response.text}")
-                raise ValueError(f"Ollama API Error: {response.status_code}")
-            result = response.json()
-            return result["message"]["content"].strip()
+            raise LLMCancelledError(f"Ollama call cancelled by MCP session ({type(be).__name__})") from be
 
 
 class MockStrategy(LLMStrategy):

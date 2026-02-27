@@ -12,6 +12,7 @@ from glpi_mcp_server.processors.contract_processor import ContractProcessor
 from glpi_mcp_server.tools.utils import filter_kwargs, move_file_safely, to_internal_path, to_host_path
 from glpi_mcp_server.config import settings
 from glpi_mcp_server.tools.error_codes import get_error_response
+from glpi_mcp_server.llm.strategies import LLMCancelledError
 
 
 
@@ -109,6 +110,11 @@ async def tool_batch_contracts(path: str | None = None) -> dict[str, Any]:
                 if not result_entry["document_attached"]:
                      result_entry["document_error"] = creation_result.get("document_error")
                  
+        except LLMCancelledError as llm_err:
+            # LLM timed out or was cancelled by the MCP session
+            result_entry["status"] = "error"
+            result_entry["error"] = str(llm_err)
+            result_entry.update(get_error_response(105))
         except Exception as e:
             # Record Failure
             result_entry["status"] = "error"
