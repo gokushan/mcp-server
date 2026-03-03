@@ -26,40 +26,61 @@ async def list_folders() -> dict[str, Any]:
         "to_process": [],
         "processed": [],
         "errors": [],
+        "errors_details": [],
         "success": True
     }
     
     all_ok = True
     
-    def is_dir_accessible(p: Path) -> bool:
-        """Check if a path is an existing, searchable, and readable directory."""
+    def check_access(p_str: str | Path, need_write: bool = False) -> dict[str, Any] | None:
+        """Check if a path is accessible and return error info if not."""
         try:
-            return p.exists() and p.is_dir() and os.access(p, os.R_OK | os.X_OK)
-        except Exception:
-            return False
+            p = Path(p_str)
+            if not p.exists():
+                return {**get_error_response(104), "path": to_host_path(p)}
+            if not p.is_dir():
+                return {"error_code": 100, "error_description": "Path is not a directory", "path": to_host_path(p)}
+            
+            # Read and Execute (search) permissions
+            if not os.access(p, os.R_OK | os.X_OK):
+                return {**get_error_response(103), "path": to_host_path(p), "detail": "Read/Execute permission denied"}
+                
+            # Write permission (required for target folders)
+            if need_write and not os.access(p, os.W_OK):
+                return {**get_error_response(103), "path": to_host_path(p), "detail": "Write permission denied"}
+            
+            return None
+        except Exception as e:
+            return {"error_code": 100, "error_description": str(e), "path": str(p_str)}
 
     # 1. Source folders (to process)
     for p in settings.allowed_roots_list:
-        if is_dir_accessible(p):
-            result["to_process"].append(to_host_path(p))
-        else:
+        err = check_access(p, need_write=False)
+        if err:
             all_ok = False
+            result["errors_details"].append(err)
+        else:
+            result["to_process"].append(to_host_path(p))
             
     # 2. Processed folder
     if settings.folder_success_path:
         p = settings.folder_success_path
-        if is_dir_accessible(p):
-            result["processed"].append(to_host_path(p))
-        else:
+        err = check_access(p, need_write=True)
+        if err:
             all_ok = False
+            result["errors_details"].append(err)
+        else:
+            result["processed"].append(to_host_path(p))
             
     # 3. Errors folder
     if settings.folder_errores_path:
         p = settings.folder_errores_path
-        if is_dir_accessible(p):
-            result["errors"].append(to_host_path(p))
-        else:
+        err = check_access(p, need_write=True)
+        if err:
             all_ok = False
+            result["errors_details"].append(err)
+        else:
+            result["errors"].append(to_host_path(p))
             
     result["success"] = all_ok
     return result

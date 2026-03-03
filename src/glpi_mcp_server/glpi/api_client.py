@@ -217,7 +217,9 @@ class GLPIAPIClient:
         headers = await self._get_headers()
 
         url = f"{self.api_url}/{endpoint.lstrip('/')}"
+        logger.info("[GLPI POST] endpoint=%s | payload=%s", endpoint, data)
         response = await client.post(url, headers=headers, json={"input": data})
+        logger.info("[GLPI POST] status=%s | response=%s", response.status_code, response.text[:500])
 
         response.raise_for_status()
         return response.json()
@@ -341,6 +343,7 @@ class GLPIAPIClient:
             "uploadManifest": json.dumps(manifest)
         }
 
+        logger.info("[GLPI UPLOAD] endpoint=%s | file=%s | manifest=%s", endpoint, file_obj.name, manifest)
         response = await client.post(
             url,
             headers=headers,
@@ -351,6 +354,7 @@ class GLPIAPIClient:
         # Close file handle
         files["filename[]"][1].close()
 
+        logger.info("[GLPI UPLOAD] status=%s | response=%s", response.status_code, response.text[:500])
         response.raise_for_status()
         return response.json()
 

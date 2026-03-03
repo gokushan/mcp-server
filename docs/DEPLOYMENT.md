@@ -21,7 +21,58 @@ Copia únicamente los siguientes archivos y carpetas de la subcarpeta `server/` 
 
 ---
 
-## Opción A: Despliegue con Docker (RECOMENDADO)
+## Requisitos Previos y Configuración de Servicios
+
+Antes de desplegar el servidor, asegúrate de cumplir con los requisitos básicos y configurar correctamente los servicios externos.
+
+### 1. Requisitos del Sistema
+- **Python 3.10+**: Necesario solo para ejecutar  en modo desarrollo
+ **Docker y Docker Compose**: Recomendado para simplificar el despliegue .
+- **uv**: Gestión de paquetes Python ultrarrápida (usado internamente por el servidor).
+- **Instancia de GLPI**: Versión 11.0.4.
+- **Proveedor de LLM**: Cuenta local de Ollama con alguno de los siguientes modelos: Qwen, GLM, .... [Por deterrminar]. Es necesario tener instalado Ollama como motor de inferencia.Esta información tienes que configurarla en las variables de entorno del archivo `.env`. También se podría configurar para Claude y ChatGPT para usar modelos en la nube pero no se recomienda.
+
+### 2. Configuración de GLPI (API REST)
+El servidor MCP interactúa con GLPI exclusivamente a través de su API REST. Sigue estos pasos en la interfaz de GLPI:
+
+1.  **Habilitar API REST**:
+    -   Ve a `Configuración > General > API`.
+    -   Activa `Habilitar la API Rest`.
+    -   Activa `Habilitar el login con credenciales externas` (requerido para el uso de User Tokens).
+    -   **Seguridad**: Si tienes activado el `Acceso restringido a la API`, debes añadir la dirección IP de donde corre este servidor MCP a la whitelist ("Whitelist de IPv4/IPv6") en esa misma pantalla.
+
+2.  **Generar Token de Aplicación (App Token)**:
+    -   En la misma pantalla de API, haz clic en "Añadir un nuevo token de aplicación".
+    -   Dale un nombre descriptivo (ej: `MCP-Server-GLPI`).
+    -   Copia el token generado. Este valor irá en la variable `GLPI_APP_TOKEN`.
+
+3.  **Generar Token de Usuario (User Token)**:
+    -   Entra en el perfil del usuario que realizará las acciones (clic en el nombre de usuario arriba a la derecha > `Perfil`).
+    -   En la pestaña `Llave de acceso remoto`, haz clic en "Regenerar" (o copia el existente) bajo el campo "Token de la API".
+    -   Este valor irá en la variable `GLPI_USER_TOKEN`.
+    -   *Nota: Asegúrate de que este usuario tenga permisos suficientes dentro de GLPI para crear Documentos, Facturas y Contratos.*
+4. **Permisos de usuario y acceso a contratos en GLPI**
+    - Se recomienda crear un usuario específico con perfil super-admin en GLPI
+    - Verificar que este usuario tiene permisos para gestionar contratos. Esto se verifica en al apartado `Administración > Perfiles > Gestión`
+
+### 3. Configuración de Ollama (Local LLM)
+Si optas por privacidad total o evitar costes de API, puedes usar Ollama:
+
+1.  **Instalación**: Descarga e instala Ollama desde [ollama.com](https://ollama.com).
+2.  **Preparar Modelo**: Descarga los lmodelos que vayas a usar Descárgalo ejecutando:
+    ```bash
+    ollama pull <modelo>
+    ```
+    *(Puedes usar otros modelos como `llama3` o `mistral` cambiando la variable `OLLAMA_MODEL`)*.
+3.  **Configuración de Red (Linux/Docker)**:
+    -   Para que el contenedor Docker pueda ver a Ollama en el host Linux, Ollama debe escuchar en todas las interfaces.
+    -   Configura la variable de entorno `OLLAMA_HOST=0.0.0.0` en tu servicio de Ollama.
+    -   En el archivo `.env` del MCP, usa la IP de la puerta de enlace de Docker (normalmente `http://172.17.0.1:11434`) como `OLLAMA_BASE_URL`.
+
+
+---
+
+## Despliegue con Docker (RECOMENDADO)
 
 Este es el método más sencillo y robusto, ya que incluye todas las dependencias y garantiza que el entorno sea idéntico al de desarrollo.
 
@@ -37,11 +88,11 @@ Es fundamental configurar correctamente el archivo `.env`. A continuación se de
 
 | Variable | Descripción | Ejemplo / Valor por defecto |
 | :--- | :--- | :--- |
-| **GLPI API** | | |
+| **GLPI API** || |
 | `GLPI_API_URL` | URL base de la API REST de GLPI. | `http://192.168.1.100:8080/apirest.php` |
 | `GLPI_APP_TOKEN` | Token de aplicación generado en GLPI. | `your_app_token_here` |
 | `GLPI_USER_TOKEN` | Token de usuario (API Token) de GLPI. | `your_user_token_here` |
-| **OAuth 2.1** | (Opcional si se usa User Token) | |
+| **OAuth 2.1** | (No usado, se ha añadido de forma opcional pero no esta operativo) | |
 | `OAUTH_CLIENT_ID` | ID de cliente OAuth. | `client_id` |
 | `OAUTH_CLIENT_SECRET` | Secreto de cliente OAuth. | `client_secret` |
 | `OAUTH_AUTHORIZATION_URL` | URL de autorización OAuth. | `https://glpi.ex.com/oauth/authorize` |
@@ -49,31 +100,29 @@ Es fundamental configurar correctamente el archivo `.env`. A continuación se de
 | `OAUTH_REDIRECT_URI` | URI de redirección para el flujo OAuth. | `http://localhost:8080/callback` |
 | **Versión (Tagging)** | | |
 | `APP_VERSION` | Versión de la app (tag de la imagen Docker). | `v0.1.0` |
-| **GLPI API** | | |
-| `GLPI_API_URL` | URL base de la API REST de GLPI. | `http://192.168.1.100:8080/apirest.php` |
-| `GLPI_APP_TOKEN` | Token de aplicación generado en GLPI. | `your_app_token_here` |
-| `GLPI_USER_TOKEN` | Token de usuario (API Token) de GLPI. | `your_user_token_here` |
 | **Transporte MCP** | | |
-| `MCP_TRANSPORT` | Método de transporte del servidor. | `streamable-http` (o `stdio`, `sse`) |
+| `MCP_TRANSPORT` | Método de transporte del servidor. Usar siempre  `streamable-http` excepto para pruebas en local| `streamable-http` (o `stdio`, `sse`) |
 | `MCP_HOST` | Host donde escuchará el servidor. | `0.0.0.0` (para aceptar conexiones externas) |
 | `MCP_PORT` | Puerto donde escuchará el servidor. | `8081` |
 | **LLM (Procesado)** | (Solo si usas herramientas de docs) | |
 | `LLM_PROVIDER` | Proveedor de LLM a utilizar. | `openai`, `anthropic`, `ollama` |
 | `OPENAI_API_KEY` | API Key de OpenAI. | `sk-...` |
 | `ANTHROPIC_API_KEY` | API Key de Anthropic. | `sk-ant-...` |
+| `OLLAMA_BASE_URL` | URL de tu instancia de Ollama. | `http://172.17.0.1:11434` |
+| `OLLAMA_MODEL` | Modelo a utilizar en Ollama. | `llama2` |
 | **Seguridad** | | |
-| `GLPI_ALLOWED_ROOTS` | Rutas absolutas permitidas (CSV). | `/home/user/docs,/var/www/docs` |
+| `GLPI_ALLOWED_ROOTS` | Rutas absolutas permitidas separadas por comas y sin espacios. | `/home/user/docs,/var/www/docs` |
 | `GLPI_ALLOWED_EXTENSIONS`| Extensiones de archivo permitidas. | `pdf,txt,doc,docx` |
 | `GLPI_FOLDER_SUCCESS` | Carpeta para archivos procesados con éxito. | `/home/user/procesados` |
 | `GLPI_FOLDER_ERRORES` | Carpeta para archivos que fallaron. | `/home/user/errores` |
 | **Traducción de Rutas** | (Solo para Docker) | |
-| `GLPI_HOST_ALLOWED_ROOTS`| Rutas reales en el host (CSV). | `/home/gokushan/docs,...` |
-| `GLPI_HOST_FOLDER_SUCCESS`| Ruta real del host para éxitos. | `/home/gokushan/exito` |
-| `GLPI_HOST_FOLDER_ERRORES`| Ruta real del host para errores. | `/home/gokushan/error` |
+| `GLPI_HOST_ALLOWED_ROOTS`| Rutas reales en el ho. | `/home/gokushan/docs,...` |
+| `GLPI_HOST_FOLDER_SUCCESS`| Ruta real del host para archivos procesados. | `/home/gokushan/exito` |
+| `GLPI_HOST_FOLDER_ERRORES`| Ruta real del host para archivos con errores. | `/home/gokushan/error` |
 | **Configuración LLM Avanzada** | | |
-| `LLM_MAX_CHARS` | Máximo de caracteres a procesar por doc. | `20000` |
-| `TIMEOUT_LLM` | Timeout para respuestas del LLM (seg). | `300.0` |
-| `LLM_MOCK` | Activa el modo de simulación (Mock). | `true` / `false` |
+| `LLM_MAX_CHARS` | Máximo de caracteres a procesar por doc. | `50000` |
+| `TIMEOUT_LLM` | Timeout para respuestas del LLM (seg). | `600.0` |
+| `LLM_MOCK` | Activa el modo de simulación (Mock) para evitar llamar al LLM en pruebas. | `true` / `false` |
 | **Logging** | | |
 | `LOG_LEVEL` | Nivel de detalle de los logs. | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | **Docker (Avanzado)** | (Configuración de volúmenes y permisos) | |
@@ -134,66 +183,10 @@ Cuando el servidor corre en Docker, las rutas internas (`/app/data/...`) son dif
 
 ---
 
-## Opción B: Despliegue Manual (Systemd)
 
-Crea un archivo de servicio para que el servidor se inicie automáticamente y se reinicie en caso de fallo:
+### 5. Conexión desde el Cliente (Claude Desktop)
 
-`sudo nano /etc/systemd/system/glpi-mcp.service`
-
-```ini
-[Unit]
-Description=GLPI MCP Server (HTTP)
-After=network.target
-
-[Service]
-Type=simple
-User=tu_usuario
-WorkingDirectory=/home/tu_usuario/proyectos-mcp/glpi-mcp/server
-# Carga las variables de entorno desde el archivo .env
-EnvironmentFile=/home/tu_usuario/proyectos-mcp/glpi-mcp/server/.env
-ExecStart=/home/tu_usuario/.local/bin/uv run fastmcp run src/glpi_mcp_server/server.py --transport http --port 8000
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-**Comandos útiles:**
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable glpi-mcp
-sudo systemctl start glpi-mcp
-sudo systemctl status glpi-mcp
-```
-
-### 2. Acceso Remoto Seguro (Nginx / HTTPS)
-
-No se recomienda exponer el puerto 8000 directamente a internet. Usa un proxy inverso como Nginx con SSL (Certbot):
-
-```nginx
-server {
-    server_name mcp.tu-dominio.com;
-
-    location / {
-        proxy_pass http://localhost:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # Importante para Streamable HTTP
-        proxy_set_header Connection '';
-        proxy_http_version 1.1;
-        chunked_transfer_encoding off;
-        proxy_buffering off;
-        proxy_cache off;
-    }
-}
-```
-
-### 3. Conexión desde el Cliente (Claude Desktop)
-
-Una vez el servidor está corriendo en tu servidor remoto (ej. `mcp.tu-dominio.com`), puedes conectar Claude Desktop usando un puente:
+Una vez el servidor está corriendo en tu servidor remoto (ej. `mcp.tu-dominio.com`), puedes conectar Claude Desktop usando un puente y usarlo como mcp server:
 
 ```json
 {

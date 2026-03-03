@@ -9,6 +9,19 @@ ERROR_CODES = {
     105: "LLM timeout or cancelled"
 }
 
+
+class FileReadError(IOError):
+    """Raised when a file exists and has an allowed extension but cannot be read
+    or its content is malformed / not decodable (maps to error code 100)."""
+    pass
+
+
+class FileExtensionError(ValueError):
+    """Raised when a file's extension is not in the allowed extensions list
+    (maps to error code 102)."""
+    pass
+
+
 def get_error_response(code: int) -> dict:
     """Get error code and description as a dictionary."""
     return {

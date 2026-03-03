@@ -1,8 +1,11 @@
+import logging
 import httpx
 from typing import Any
 
 from .api_client import GLPIAPIClient
 from .models import ContractData, ContractResponse
+
+logger = logging.getLogger(__name__)
 
 
 class ContractManager:
@@ -24,14 +27,17 @@ class ContractManager:
         # Convert Pydantic model to dict, filtering None values
         payload = {k: v for k, v in data.model_dump(mode='json').items() if v is not None}
         
+        logger.info("[ContractManager.create] Sending to GLPI: %s", payload)
         response = await self.client.post(self.endpoint, payload)
+        logger.info("[ContractManager.create] GLPI raw response: %s", response)
         
         # Determine ID from response (can be list or dict)
         if isinstance(response, list):
             contract_id = response[0].get("id")
         else:
             contract_id = response.get("id")
-            
+
+        logger.info("[ContractManager.create] Contract created with ID: %s", contract_id)
         return await self.get(contract_id)
 
     async def update(self, contract_id: int, data: dict[str, Any]) -> ContractResponse:

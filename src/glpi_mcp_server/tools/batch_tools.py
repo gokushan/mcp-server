@@ -11,7 +11,7 @@ from glpi_mcp_server.tools.contract_tools import create_glpi_contract
 from glpi_mcp_server.processors.contract_processor import ContractProcessor
 from glpi_mcp_server.tools.utils import filter_kwargs, move_file_safely, to_internal_path, to_host_path
 from glpi_mcp_server.config import settings
-from glpi_mcp_server.tools.error_codes import get_error_response
+from glpi_mcp_server.tools.error_codes import get_error_response, FileReadError, FileExtensionError
 from glpi_mcp_server.llm.strategies import LLMCancelledError
 
 
@@ -83,7 +83,26 @@ async def tool_batch_contracts(path: str | None = None) -> dict[str, Any]:
         try:
             # A. Extract Data
             extraction_result = await process_contract(file_path)
-            
+
+            # Check if extraction itself failed (process_contract returned an error dict)
+            if "error_code" in extraction_result:
+                result_entry["status"] = "error"
+                result_entry["error"] = extraction_result.get("error", "Document processing failed")
+                result_entry["error_code"] = extraction_result.get("error_code")
+                result_entry["error_description"] = extraction_result.get("error_description")
+                results.append(result_entry)
+                # Move file to error folder and continue to next file
+                try:
+                    if settings.glpi_folder_errores:
+                        import os
+                        source_path = Path(to_internal_path(file_path))
+                        target_dir = Path(settings.glpi_folder_errores).resolve()
+                        new_path = move_file_safely(source_path, target_dir)
+                        result_entry["processed_path"] = to_host_path(new_path)
+                except Exception as move_err:
+                    result_entry["error"] = f"{result_entry['error']} | Fallo al mover archivo: {move_err}"
+                continue
+
             # Check for prompt injection
             if extraction_result.get("prompt_injection_detected", False):
                 result_entry["status"] = "error"
@@ -115,21 +134,23 @@ async def tool_batch_contracts(path: str | None = None) -> dict[str, Any]:
             result_entry["status"] = "error"
             result_entry["error"] = str(llm_err)
             result_entry.update(get_error_response(105))
-        except Exception as e:
-            # Record Failure
+        except FileNotFoundError as e:
             result_entry["status"] = "error"
             result_entry["error"] = str(e)
-            
-            # Map error codes
-            err_str = str(e).lower()
-            if "not found" in err_str or "no exist" in err_str or "not exist" in err_str:
-                result_entry.update(get_error_response(104))
-            elif "not allowed" in err_str and "extension" in err_str:
-                result_entry.update(get_error_response(102))
-            elif "not allowed" in err_str or "denied" in err_str:
-                result_entry.update(get_error_response(103))
-            else:
-                result_entry.update(get_error_response(100))
+            result_entry.update(get_error_response(104))
+        except FileExtensionError as e:
+            result_entry["status"] = "error"
+            result_entry["error"] = str(e)
+            result_entry.update(get_error_response(102))
+        except FileReadError as e:
+            result_entry["status"] = "error"
+            result_entry["error"] = str(e)
+            result_entry.update(get_error_response(100))
+        except Exception as e:
+            # Fallback for unexpected errors
+            result_entry["status"] = "error"
+            result_entry["error"] = str(e)
+            result_entry.update(get_error_response(100))
             
         # >> Mover el archivo a la carpeta correspondiente con nombre seguro <<
         try:
