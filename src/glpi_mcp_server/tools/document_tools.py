@@ -15,6 +15,7 @@ from ..processors.contract_processor import ContractProcessor
 from ..processors.invoice_processor import InvoiceProcessor
 from ..tools.utils import is_path_allowed, to_internal_path
 from ..tools.error_codes import get_error_response, FileReadError, FileExtensionError
+from ..llm.strategies import LLMCancelledError
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,13 @@ async def process_contract(file_path: str) -> dict[str, Any]:
         result = await processor.process(file_path)
         return result.model_dump()
 
+    except LLMCancelledError as e:
+        logger.error("[process_contract] LLM Timeout/Cancelled: %s", e)
+        return {
+            "success": False,
+            "error": str(e),
+            **get_error_response(105)
+        }
     except FileNotFoundError as e:
         logger.warning("[process_contract] File not found: %s", e)
         return {
@@ -131,6 +139,13 @@ async def process_invoice(file_path: str) -> dict[str, Any]:
         result = await processor.process(file_path)
         return result.model_dump()
 
+    except LLMCancelledError as e:
+        logger.error("[process_invoice] LLM Timeout/Cancelled: %s", e)
+        return {
+            "success": False,
+            "error": str(e),
+            **get_error_response(105)
+        }
     except FileNotFoundError as e:
         logger.warning("[process_invoice] File not found: %s", e)
         return {

@@ -52,56 +52,26 @@ Implementan los puertos para tecnologías específicas.
 *   **Composition Root**:
     *   `server.py`: No es un adaptador, sino el punto donde se ensambla toda la aplicación. Registra las herramientas en FastMCP y configura las dependencias.
 
-## Flujo de Ejecución: Ejemplo "Crear Ticket"
+## Flujo de Ejecución: Ejemplo "Crear Contrato"
 
-Para entender cómo las capas trabajan juntas, veamos qué ocurre cuando un usuario solicita crear un ticket:
+Para entender cómo las capas trabajan juntas, veamos qué ocurre cuando un usuario solicita crear un contrato:
 
-```mermaid
-sequenceDiagram
-    participant User as Cliente MCP<br/>(Claude Desktop)
-    participant MCP as FastMCP<br/>(Framework)
-    participant Tool as create_ticket()<br/>[Primary Adapter]
-    participant Domain as TicketData<br/>[Domain Model]
-    participant Manager as TicketManager<br/>[Domain Service]
-    participant Client as GLPIAPIClient<br/>[Secondary Adapter]
-    participant Auth as OAuthClient<br/>[Secondary Adapter]
-    participant GLPI as GLPI API<br/>(Externo)
-
-    User->>MCP: JSON-RPC: create_ticket(...)
-    MCP->>Tool: Invoca función Python
-    Tool->>Domain: Valida y crea TicketData
-    Tool->>Manager: manager.create(TicketData)
-    Manager->>Client: client.post("/Ticket", payload)
-    Client->>Auth: ensure_valid_token()
-    Auth-->>Client: access_token
-    Client->>GLPI: HTTP POST con OAuth token
-    GLPI-->>Client: {"id": 123}
-    Client-->>Manager: JSON response
-    Manager->>Client: client.get("/Ticket/123")
-    Client->>GLPI: HTTP GET
-    GLPI-->>Client: Detalles completos
-    Manager->>Domain: Crea TicketResponse
-    Manager-->>Tool: TicketResponse
-    Tool-->>MCP: dict (serializado)
-    MCP-->>User: JSON-RPC response
-```
 
 ### Paso a paso:
 
-1. **Cliente MCP → FastMCP Framework**: El usuario envía una solicitud JSON-RPC.
-2. **FastMCP → `create_ticket()` (Primary Adapter)**: El framework invoca la función registrada en `tools/ticket_tools.py`.
-3. **Tool → Domain**: La función valida los parámetros y crea un objeto `TicketData` (modelo de dominio).
-4. **Tool → TicketManager**: Delega la lógica de creación al servicio de dominio.
-5. **TicketManager → GLPIAPIClient (Secondary Adapter)**: Convierte el modelo a JSON y solicita la creación vía HTTP.
-6. **GLPIAPIClient → OAuthClient**: Verifica/obtiene un token de autenticación válido.
-7. **GLPIAPIClient → GLPI API**: Realiza la petición HTTP real al servidor externo.
-8. **Retorno**: La respuesta viaja de vuelta por las mismas capas, transformándose de JSON crudo a objetos de dominio (`TicketResponse`) y finalmente a JSON para el cliente.
+1. **Cliente MCP → FastMCP Framework**: El usuario envía una solicitud JSON-RPC para crear un contrato.
+2. **FastMCP → `create_glpi_contract()` (Primary Adapter)**: El framework invoca la función registrada en `tools/contract_tools.py`.
+3. **Tool → Domain**: La función valida los parámetros y crea un objeto `ContractData` (modelo de dominio).
+4. **Tool → ContractManager**: Delega la lógica de creación al servicio de dominio encargado de contratos.
+5. **ContractManager → GLPIAPIClient (Secondary Adapter)**: Convierte el modelo a JSON y solicita la creación vía HTTP POST al endpoint `/Contract`.
+6. **GLPIAPIClient → GLPI API**: Realiza la petición real.
+7. **Lógica adicional (Adjuntos)**: Si se proporcionó una ruta de archivo, la herramienta utiliza `DocumentManager` para subir y asociar el documento al contrato recién creado.
+8. **Retorno**: La respuesta se transforma de objetos de dominio a un diccionario (JSON) que el protocolo MCP envía de vuelta al cliente.
 
 ## Principios SOLID Aplicados
 
 ### SRP: Single Responsibility Principle (Responsabilidad Única)
 Cada módulo tiene una responsabilidad clara:
-*   `auth`: Solo maneja tokens y OAuth.
 *   `glpi`: Solo se encarga de hablar con la API de GLPI.
 *   `processors`: Solo se encarga de extraer texto y datos de documentos.
 *   `tools`: Solo define la interfaz para el cliente MCP, delegando la lógica.

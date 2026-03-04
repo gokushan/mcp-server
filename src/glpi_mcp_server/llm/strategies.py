@@ -39,31 +39,40 @@ class OpenAIStrategy(LLMStrategy):
         
         request_timeout = timeout if timeout is not None else settings.timeout_llm
         
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                settings.openai_url,
-                headers={
-                    "Authorization": f"Bearer {settings.openai_api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": settings.openai_model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_content}
-                    ],
-                    "response_format": {"type": "json_object"}
-                },
-                timeout=request_timeout
-            )
-            
-            if response.status_code != 200:
-                logger.error(f"OpenAI API Error: {response.text}")
-                raise ValueError(f"OpenAI API Error: {response.status_code}")
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    settings.openai_url,
+                    headers={
+                        "Authorization": f"Bearer {settings.openai_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": settings.openai_model,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_content}
+                        ],
+                        "response_format": {"type": "json_object"}
+                    },
+                    timeout=request_timeout
+                )
                 
-            result = response.json()
-            content = result["choices"][0]["message"]["content"]
-            return json.loads(self._clean_json_content(content))
+                if response.status_code != 200:
+                    logger.error(f"OpenAI API Error: {response.text}")
+                    raise ValueError(f"OpenAI API Error: {response.status_code}")
+                    
+                result = response.json()
+                content = result["choices"][0]["message"]["content"]
+                return json.loads(self._clean_json_content(content))
+        except httpx.TimeoutException as te:
+            logger.error("[OpenAI] Request TIMED OUT after %ss. Error: %s", request_timeout, te)
+            raise LLMCancelledError(f"OpenAI request timed out after {request_timeout}s") from te
+        except BaseException as be:
+            if isinstance(be, (KeyboardInterrupt, SystemExit)):
+                raise
+            logger.error("[OpenAI] Task CANCELLED or fundamental error. type=%s | error=%s", type(be).__name__, be)
+            raise LLMCancelledError(f"OpenAI call interrupted ({type(be).__name__})") from be
 
     async def generate_text(self, system_prompt: str, user_content: str, timeout: float | None = None) -> str:
         logger.info("OpenAI Request (Text) - System: %s", system_prompt)
@@ -71,27 +80,36 @@ class OpenAIStrategy(LLMStrategy):
         
         request_timeout = timeout if timeout is not None else settings.timeout_llm
         
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                settings.openai_url,
-                headers={
-                    "Authorization": f"Bearer {settings.openai_api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": settings.openai_model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_content}
-                    ]
-                },
-                timeout=request_timeout
-            )
-            if response.status_code != 200:
-                logger.error(f"OpenAI API Error: {response.text}")
-                raise ValueError(f"OpenAI API Error: {response.status_code}")
-            result = response.json()
-            return result["choices"][0]["message"]["content"].strip()
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    settings.openai_url,
+                    headers={
+                        "Authorization": f"Bearer {settings.openai_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": settings.openai_model,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_content}
+                        ]
+                    },
+                    timeout=request_timeout
+                )
+                if response.status_code != 200:
+                    logger.error(f"OpenAI API Error: {response.text}")
+                    raise ValueError(f"OpenAI API Error: {response.status_code}")
+                result = response.json()
+                return result["choices"][0]["message"]["content"].strip()
+        except httpx.TimeoutException as te:
+            logger.error("[OpenAI/Text] Request TIMED OUT after %ss. Error: %s", request_timeout, te)
+            raise LLMCancelledError(f"OpenAI request timed out after {request_timeout}s") from te
+        except BaseException as be:
+            if isinstance(be, (KeyboardInterrupt, SystemExit)):
+                raise
+            logger.error("[OpenAI/Text] Task CANCELLED or fundamental error. type=%s | error=%s", type(be).__name__, be)
+            raise LLMCancelledError(f"OpenAI call interrupted ({type(be).__name__})") from be
 
 class AnthropicStrategy(LLMStrategy):
     """Anthropic implementation of LLM Strategy."""
@@ -102,32 +120,41 @@ class AnthropicStrategy(LLMStrategy):
         
         request_timeout = timeout if timeout is not None else settings.timeout_llm
         
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{settings.anthropic_base_url}/messages",
-                headers={
-                    "x-api-key": settings.anthropic_api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": settings.anthropic_model,
-                    "max_tokens": 4096,
-                    "system": system_prompt,
-                    "messages": [
-                        {"role": "user", "content": user_content}
-                    ],
-                },
-                timeout=request_timeout
-            )
-
-            if response.status_code != 200:
-                logger.error(f"Anthropic API Error: {response.text}")
-                raise ValueError(f"Anthropic API Error: {response.status_code}")
-
-            result = response.json()
-            content = result["content"][0]["text"]
-            return json.loads(self._clean_json_content(content))
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{settings.anthropic_base_url}/messages",
+                    headers={
+                        "x-api-key": settings.anthropic_api_key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": settings.anthropic_model,
+                        "max_tokens": 4096,
+                        "system": system_prompt,
+                        "messages": [
+                            {"role": "user", "content": user_content}
+                        ],
+                    },
+                    timeout=request_timeout
+                )
+    
+                if response.status_code != 200:
+                    logger.error(f"Anthropic API Error: {response.text}")
+                    raise ValueError(f"Anthropic API Error: {response.status_code}")
+    
+                result = response.json()
+                content = result["content"][0]["text"]
+                return json.loads(self._clean_json_content(content))
+        except httpx.TimeoutException as te:
+            logger.error("[Anthropic] Request TIMED OUT after %ss. Error: %s", request_timeout, te)
+            raise LLMCancelledError(f"Anthropic request timed out after {request_timeout}s") from te
+        except BaseException as be:
+            if isinstance(be, (KeyboardInterrupt, SystemExit)):
+                raise
+            logger.error("[Anthropic] Task CANCELLED or fundamental error. type=%s | error=%s", type(be).__name__, be)
+            raise LLMCancelledError(f"Anthropic call interrupted ({type(be).__name__})") from be
 
     async def generate_text(self, system_prompt: str, user_content: str, timeout: float | None = None) -> str:
         logger.info("Anthropic Request (Text) - System: %s", system_prompt)
@@ -135,29 +162,38 @@ class AnthropicStrategy(LLMStrategy):
         
         request_timeout = timeout if timeout is not None else settings.timeout_llm
         
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{settings.anthropic_base_url}/messages",
-                headers={
-                    "x-api-key": settings.anthropic_api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": settings.anthropic_model,
-                    "max_tokens": 4096,
-                    "system": system_prompt,
-                    "messages": [
-                        {"role": "user", "content": user_content}
-                    ],
-                },
-                timeout=request_timeout
-            )
-            if response.status_code != 200:
-                logger.error(f"Anthropic API Error: {response.text}")
-                raise ValueError(f"Anthropic API Error: {response.status_code}")
-            result = response.json()
-            return result["content"][0]["text"].strip()
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{settings.anthropic_base_url}/messages",
+                    headers={
+                        "x-api-key": settings.anthropic_api_key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": settings.anthropic_model,
+                        "max_tokens": 4096,
+                        "system": system_prompt,
+                        "messages": [
+                            {"role": "user", "content": user_content}
+                        ],
+                    },
+                    timeout=request_timeout
+                )
+                if response.status_code != 200:
+                    logger.error(f"Anthropic API Error: {response.text}")
+                    raise ValueError(f"Anthropic API Error: {response.status_code}")
+                result = response.json()
+                return result["content"][0]["text"].strip()
+        except httpx.TimeoutException as te:
+            logger.error("[Anthropic/Text] Request TIMED OUT after %ss. Error: %s", request_timeout, te)
+            raise LLMCancelledError(f"Anthropic request timed out after {request_timeout}s") from te
+        except BaseException as be:
+            if isinstance(be, (KeyboardInterrupt, SystemExit)):
+                raise
+            logger.error("[Anthropic/Text] Task CANCELLED or fundamental error. type=%s | error=%s", type(be).__name__, be)
+            raise LLMCancelledError(f"Anthropic call interrupted ({type(be).__name__})") from be
 
 class OllamaStrategy(LLMStrategy):
     """Ollama implementation of LLM Strategy."""

@@ -27,10 +27,12 @@ Antes de desplegar el servidor, asegúrate de cumplir con los requisitos básico
 
 ### 1. Requisitos del Sistema
 - **Python 3.10+**: Necesario solo para ejecutar  en modo desarrollo
- **Docker y Docker Compose**: Recomendado para simplificar el despliegue .
+- **Docker y Docker Compose**: Método de despliegue. Requiere tener instalado Docker.
 - **uv**: Gestión de paquetes Python ultrarrápida (usado internamente por el servidor).
 - **Instancia de GLPI**: Versión 11.0.4.
-- **Proveedor de LLM**: Cuenta local de Ollama con alguno de los siguientes modelos: Qwen, GLM, .... [Por deterrminar]. Es necesario tener instalado Ollama como motor de inferencia.Esta información tienes que configurarla en las variables de entorno del archivo `.env`. También se podría configurar para Claude y ChatGPT para usar modelos en la nube pero no se recomienda.
+- **Proveedor de LLM**: Cuenta local de Ollama con alguno de los siguientes modelos: Qwen, GLM, .... [Por deterrminar]. También se podría configurar para Claude y ChatGPT para usar modelos en la nube pero no se recomienda.
+- **Ollama**: Motor de inferencia. Requiere tener instalado Ollama. Es necesario tener instalado Ollama como motor de inferencia.Esta información hay que configurarla en las variables de entorno del archivo `.env`
+- **Entidades en GLPI**: La comunicación con GLPI presupone que solo existe una entidad (entidad 0). 
 
 ### 2. Configuración de GLPI (API REST)
 El servidor MCP interactúa con GLPI exclusivamente a través de su API REST. Sigue estos pasos en la interfaz de GLPI:
@@ -109,7 +111,7 @@ Es fundamental configurar correctamente el archivo `.env`. A continuación se de
 | `OPENAI_API_KEY` | API Key de OpenAI. | `sk-...` |
 | `ANTHROPIC_API_KEY` | API Key de Anthropic. | `sk-ant-...` |
 | `OLLAMA_BASE_URL` | URL de tu instancia de Ollama. | `http://172.17.0.1:11434` |
-| `OLLAMA_MODEL` | Modelo a utilizar en Ollama. | `llama2` |
+| `OLLAMA_MODEL` | Modelo a utilizar en Ollama. | `LFM2.5, Qwen, Gemma 3 y otro`,  |
 | **Seguridad** | | |
 | `GLPI_ALLOWED_ROOTS` | Rutas absolutas permitidas separadas por comas y sin espacios. | `/home/user/docs,/var/www/docs` |
 | `GLPI_ALLOWED_EXTENSIONS`| Extensiones de archivo permitidas. | `pdf,txt,doc,docx` |
